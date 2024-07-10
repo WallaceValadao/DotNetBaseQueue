@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using System;
 using DotNetBaseQueue.Interfaces.Configs;
 
 namespace DotNetBaseQueue.RabbitMQ.Handler

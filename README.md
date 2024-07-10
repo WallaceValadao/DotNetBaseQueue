@@ -72,7 +72,7 @@ Startup:
 ```c# 
 services
     .AddWorkerConfiguration(configuration, CONFIG_APPSETTINGS)
-    .AddHandler<SendMessageHandler, Message>(configuration, CONFIG);
+    .AddHandler<SendMessageHandler, Message>(CONFIG);
 ```
 
 
@@ -110,7 +110,7 @@ Only handler config:
 ```JSON
   "QueueConfiguration": {
     "ExchangeName": "",
-    "ExchangeType": "",
+    "ExchangeType": "direct",
     "RoutingKey": "",
     "QueueName": "",
     "NumberOfWorkroles": 1,
@@ -130,7 +130,7 @@ All:
     "Password": "",
 
     "ExchangeName": "",
-    "ExchangeType": "",
+    "ExchangeType": "direct",
     "RoutingKey": "",
     "QueueName": "",
     "NumberOfWorkroles": 1,

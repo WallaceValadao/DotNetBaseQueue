@@ -1,0 +1,6 @@
+@DotNetBaseQueue.Api.Sample_HostAddress = http://localhost:5267
+
+GET {{DotNetBaseQueue.Api.Sample_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

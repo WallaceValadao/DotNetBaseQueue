@@ -17,12 +17,12 @@ namespace DotNetBaseQueue.RabbitMQ.Publicar.Implementation
             this.connections = new ConcurrentDictionary<string, IConnectionPublish>();
         }
 
-        public IConnectionPublish GetConnection(RabbitHostConfiguration rabbitHostConfiguration, string exchangeName, string routingKey, bool reconect = false)
+        public IConnectionPublish GetConnection(QueueHostConfiguration queueHostConfiguration, string exchangeName, string routingKey, bool reconect = false)
         {
-            var name = $"{rabbitHostConfiguration.HostName}-{rabbitHostConfiguration.Port}-{rabbitHostConfiguration.UserName}-{exchangeName}-{routingKey}";
+            var name = $"{queueHostConfiguration.HostName}-{queueHostConfiguration.Port}-{queueHostConfiguration.UserName}-{exchangeName}-{routingKey}";
             if (!connections.TryGetValue(name, out var connection))
             {
-                connection = CreateConnection(rabbitHostConfiguration, name);
+                connection = CreateConnection(queueHostConfiguration, name);
             }
 
             if (!reconect)
@@ -37,16 +37,16 @@ namespace DotNetBaseQueue.RabbitMQ.Publicar.Implementation
                 connections.TryRemove(name, out var _);
             }
 
-            return GetConnection(rabbitHostConfiguration, exchangeName, routingKey);
+            return GetConnection(queueHostConfiguration, exchangeName, routingKey);
         }
 
-        private IConnectionPublish CreateConnection(RabbitHostConfiguration rabbitHostConfiguration, string name)
+        private IConnectionPublish CreateConnection(QueueHostConfiguration queueHostConfiguration, string name)
         {
             IConnectionPublish connection;
 
             try
             {
-                connection = new ConnectionPublish(rabbitHostConfiguration);
+                connection = new ConnectionPublish(queueHostConfiguration);
                 connections.TryAdd(name, connection);
                 _logger.LogInformation($"Created a new connection: {name}");
             }

@@ -7,90 +7,91 @@ using DotNetBaseQueue.Interfaces.Configs;
 using DotNetBaseQueue.RabbitMQ.Handler.Consumir;
 using DotNetBaseQueue.RabbitMQ.Interfaces;
 using DotNetBaseQueue.RabbitMQ.Handler.Extensions;
+using DotNetBaseQueue.QueueMQ.HostService;
 
 namespace DotNetBaseQueue.RabbitMQ.Handler
 {
     public static class RabbitConsumerExtensions
     {
-        public static RabbitConsumerBuilder AddWorkerConsumer(this IServiceCollection services, IConfiguration configuration, string configSectionRabbitMQ = "RabbitMQConfiguration")
+        public static RabbitConsumerBuilder AddWorkerConfiguration(this IServiceCollection services, IConfiguration configuration, string configSectionRabbitMQ = "QueueConfiguration")
         {
             return new RabbitConsumerBuilder(services, configuration, configSectionRabbitMQ);
         }
 
-        public static RabbitConsumerBuilder AddWorkerConsumer(this IServiceCollection services, IConfiguration configuration, RabbitHostConfiguration rabbitConfiguration)
+        public static RabbitConsumerBuilder AddWorkerConfiguration(this IServiceCollection services, IConfiguration configuration, QueueHostConfiguration QueueConfiguration)
         {
-            return new RabbitConsumerBuilder(services, configuration, rabbitConfiguration);
+            return new RabbitConsumerBuilder(services, configuration, QueueConfiguration);
         }
 
-        public static RabbitConsumerBuilder AddWorkerAsyncQueue<IEvent, IEntity>(
+        public static RabbitConsumerBuilder AddHandler<IEvent, IEntity>(
             this RabbitConsumerBuilder rabbitConsumerBuilder,
             string configSectionRabbitMQ)
-            where IEvent : class, IRabbitEventHandler<IEntity>
-            where IEntity : class, IRabbitEvent
+            where IEvent : class, IQueueEventHandler<IEntity>
+            where IEntity : class, IQueueEvent
         {
-            var rabbitMQConfiguration = rabbitConsumerBuilder.Configuration.GetSection(configSectionRabbitMQ).Get<RabbitConfiguration>();
+            var queueConfiguration = rabbitConsumerBuilder.Configuration.GetSection(configSectionRabbitMQ).Get<QueueConfiguration>();
 
-            if (string.IsNullOrEmpty(rabbitMQConfiguration.HostName))
+            if (string.IsNullOrEmpty(queueConfiguration.HostName))
             {
-                rabbitMQConfiguration = rabbitConsumerBuilder.RabbitHostConfiguration.Convert(rabbitMQConfiguration);
+                queueConfiguration = rabbitConsumerBuilder.QueueHostConfiguration.Convert(queueConfiguration);
             }
 
-            return rabbitConsumerBuilder.AddWorkerBase<IEvent, IEntity>(rabbitMQConfiguration);
+            return rabbitConsumerBuilder.AddAddHandlerBase<IEvent, IEntity>(queueConfiguration);
         }
 
-        public static RabbitConsumerBuilder AddWorkerAsyncQueue<IEvent, IEntity>(
+        public static RabbitConsumerBuilder AddHandler<IEvent, IEntity>(
             this RabbitConsumerBuilder rabbitConsumerBuilder,
-            RabbitConfiguration rabbitMQConfiguration)
-            where IEvent : class, IRabbitEventHandler<IEntity>
-            where IEntity : class, IRabbitEvent
+            QueueConfiguration queueConfiguration)
+            where IEvent : class, IQueueEventHandler<IEntity>
+            where IEntity : class, IQueueEvent
         {
-            return rabbitConsumerBuilder.AddWorkerBase<IEvent, IEntity>(rabbitMQConfiguration);
+            return rabbitConsumerBuilder.AddAddHandlerBase<IEvent, IEntity>(queueConfiguration);
         }
 
-        public static RabbitConsumerBuilder AddWorkerAsyncQueue<IEvent, IEntity>(
+        public static RabbitConsumerBuilder AddHandler<IEvent, IEntity>(
             this RabbitConsumerBuilder rabbitConsumerBuilder,
-            string configSectionRabbitMQHostConfiguration,
+            string configSectionqueueHostConfiguration,
             string configSectionRabbitMQInfoQueueConfiguration)
-            where IEvent : class, IRabbitEventHandler<IEntity>
-            where IEntity : class, IRabbitEvent
+            where IEvent : class, IQueueEventHandler<IEntity>
+            where IEntity : class, IQueueEvent
         {
-            var rabbitMQHostConfiguration = rabbitConsumerBuilder.Configuration.GetSection(configSectionRabbitMQHostConfiguration).Get<RabbitHostConfiguration>();
+            var queueHostConfiguration = rabbitConsumerBuilder.Configuration.GetSection(configSectionqueueHostConfiguration).Get<QueueHostConfiguration>();
 
-            var rabbitMQInfoQueueConfiguration = rabbitConsumerBuilder.Configuration.GetSection(configSectionRabbitMQInfoQueueConfiguration).Get<RabbitInfoQueueConfiguration>();
+            var rabbitMQInfoQueueConfiguration = rabbitConsumerBuilder.Configuration.GetSection(configSectionRabbitMQInfoQueueConfiguration).Get<QueueInfoQueueConfiguration>();
 
-            return rabbitConsumerBuilder.AddWorkerAsyncQueue<IEvent, IEntity>(rabbitMQHostConfiguration, rabbitMQInfoQueueConfiguration);
+            return rabbitConsumerBuilder.AddHandler<IEvent, IEntity>(queueHostConfiguration, rabbitMQInfoQueueConfiguration);
         }
 
-        public static RabbitConsumerBuilder AddWorkerAsyncQueue<IEvent, IEntity>(
+        public static RabbitConsumerBuilder AddHandler<IEvent, IEntity>(
             this RabbitConsumerBuilder rabbitConsumerBuilder,
-            RabbitHostConfiguration rabbitMQHostConfiguration,
-            RabbitInfoQueueConfiguration rabbitMQInfoQueueConfiguration)
-            where IEvent : class, IRabbitEventHandler<IEntity>
-            where IEntity : class, IRabbitEvent
+            QueueHostConfiguration queueHostConfiguration,
+            QueueInfoQueueConfiguration rabbitMQInfoQueueConfiguration)
+            where IEvent : class, IQueueEventHandler<IEntity>
+            where IEntity : class, IQueueEvent
         {
-            var rabbitMQConfiguration = rabbitMQHostConfiguration.Convert(rabbitMQInfoQueueConfiguration);
+            var queueConfiguration = queueHostConfiguration.Convert(rabbitMQInfoQueueConfiguration);
 
-            return rabbitConsumerBuilder.AddWorkerBase<IEvent, IEntity>(rabbitMQConfiguration);
+            return rabbitConsumerBuilder.AddAddHandlerBase<IEvent, IEntity>(queueConfiguration);
         }
 
-        private static RabbitConsumerBuilder AddWorkerBase<IEvent, IEntity>(
+        private static RabbitConsumerBuilder AddAddHandlerBase<IEvent, IEntity>(
             this RabbitConsumerBuilder rabbitConsumerBuilder,
-            RabbitConfiguration rabbitMQConfiguration)
-            where IEvent : class, IRabbitEventHandler<IEntity>
-            where IEntity : class, IRabbitEvent
+            QueueConfiguration queueConfiguration)
+            where IEvent : class, IQueueEventHandler<IEntity>
+            where IEntity : class, IQueueEvent
         {
-            if (rabbitMQConfiguration.CreateRetryQueue)
+            if (queueConfiguration.CreateRetryQueue)
             {
                 var interfaces = typeof(IEntity).GetInterfaces();
 
-                if (!interfaces.Contains(typeof(IRabbitEventRetry)))
-                    SubscribeHelper.CreateException("CreateRetryQueue", "CreateRetryQueue = true and IEntity does not have the IRabbitEventRetry interface");
+                if (!interfaces.Contains(typeof(IQueueEventRetry)))
+                    SubscribeHelper.CreateException("CreateRetryQueue", "CreateRetryQueue = true and IEntity does not have the IQueueEventRetry interface");
             }
 
-            rabbitMQConfiguration.ValidateConfig();
+            queueConfiguration.ValidateConfig();
 
             rabbitConsumerBuilder.Services.AddScoped<IEvent>();
-            rabbitConsumerBuilder.Services.AddSingleton(new ConsumerConfiguration<IEntity, IEvent>(rabbitMQConfiguration));
+            rabbitConsumerBuilder.Services.AddSingleton(new ConsumerConfiguration<IEntity, IEvent>(queueConfiguration));
             rabbitConsumerBuilder.Services.AddSingleton<IConsumerHandler, RabbitConsumerHandler<IEntity, IEvent>>();
 
             rabbitConsumerBuilder.Services.AddHostedService<ConsumerHostedService>();

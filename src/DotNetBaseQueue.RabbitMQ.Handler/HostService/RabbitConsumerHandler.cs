@@ -1,8 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
-using DotNetBaseQueue.RabbitMQ.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,30 +10,36 @@ using DotNetBaseQueue.Interfaces.Event;
 using DotNetBaseQueue.RabbitMQ.Handler.Consumir;
 using DotNetBaseQueue.RabbitMQ.Core.Exceptions;
 using DotNetBaseQueue.RabbitMQ.Interfaces;
+using DotNetBaseQueue.RabbitMQ.HostService;
+using RabbitMQ.Client.Events;
+using RabbitMQ.Client;
+using DotNetBaseQueue.RabbitMQ.Core;
 
-namespace DotNetBaseQueue.RabbitMQ.HostService
+namespace DotNetBaseQueue.QueueMQ.HostService
 {
-    public class RabbitConsumerHandler<IEntidade, IEvent> : IConsumerHandler where IEntidade : class, IRabbitEvent where IEvent : class, IRabbitEventHandler<IEntidade>
+    public class RabbitConsumerHandler<IEntidade, IEvent> : 
+        IConsumerHandler where IEntidade : class, IQueueEvent 
+        where IEvent : class, IQueueEventHandler<IEntidade>
     {
         private readonly ILogger<RabbitConsumerHandler<IEntidade, IEvent>> _logger;
         private readonly IServiceProvider _serviceProvider;
-        private readonly RabbitConfiguration _rabbitMQConfiguration;
+        private readonly QueueConfiguration _queueConfiguration;
 
         private readonly string _mensagemAguardando;
         private TimeSpan _secondsToRetry;
 
-        public RabbitConsumerHandler(ILogger<RabbitConsumerHandler<IEntidade, IEvent>> logger, IServiceProvider serviceProvider, ConsumerConfiguration<IEntidade, IEvent> rabbitMQConfiguration)
+        public RabbitConsumerHandler(ILogger<RabbitConsumerHandler<IEntidade, IEvent>> logger, IServiceProvider serviceProvider, ConsumerConfiguration<IEntidade, IEvent> queueMQConfiguration)
         {
             _logger = logger;
-            _rabbitMQConfiguration = rabbitMQConfiguration.RabbitMQConfiguration;
+            _queueConfiguration = queueMQConfiguration.QueueConfiguration;
             _serviceProvider = serviceProvider;
-            _mensagemAguardando = $"({_rabbitMQConfiguration.QueueName}) Waiting for messages...";
-            _secondsToRetry = TimeSpan.FromSeconds(_rabbitMQConfiguration.SecondsToRetry);
+            _mensagemAguardando = $"({_queueConfiguration.QueueName}) Waiting for messages...";
+            _secondsToRetry = TimeSpan.FromSeconds(_queueConfiguration.SecondsToRetry);
         }
 
         public IEnumerable<Task> CreateTask(CancellationToken stoppingToken)
         {
-            foreach (var i in Enumerable.Range(0, _rabbitMQConfiguration.NumberOfWorkroles))
+            foreach (var i in Enumerable.Range(0, _queueConfiguration.NumberOfWorkroles))
                 yield return ProcessarAsync(stoppingToken);
         }
 
@@ -46,7 +49,7 @@ namespace DotNetBaseQueue.RabbitMQ.HostService
             {
                 try
                 {
-                    await RabbitConsumerAsync(stoppingToken);
+                    await QueueConsumerAsync(stoppingToken);
                 }
                 catch (Exception ex)
                 {
@@ -56,11 +59,11 @@ namespace DotNetBaseQueue.RabbitMQ.HostService
             }
         }
 
-        private async Task RabbitConsumerAsync(CancellationToken stoppingToken)
+        private async Task QueueConsumerAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation($"Opening channel and connection with {_rabbitMQConfiguration.HostName}.");
-            var channel = ConnectionHandler.CreateConnection(_rabbitMQConfiguration, _logger);
-            channel.BasicQos(prefetchSize: 0, prefetchCount: _rabbitMQConfiguration.PrefetchCount, global: false);
+            _logger.LogInformation($"Opening channel and connection with {_queueConfiguration.HostName}.");
+            var channel = ConnectionHandler.CreateConnection(_queueConfiguration, _logger);
+            channel.BasicQos(prefetchSize: 0, prefetchCount: _queueConfiguration.PrefetchCount, global: false);
             _logger.LogInformation("Connection started successfully.");
 
             _logger.LogInformation("Starting reading messages.");
@@ -75,7 +78,7 @@ namespace DotNetBaseQueue.RabbitMQ.HostService
                 consumer.Received += (sender, ea) => ProcessMessageAsync(commandHandler, channel, ea).GetAwaiter().GetResult();
 
                 _logger.LogInformation("Starting consumer.");
-                var tagConsummer = channel.BasicConsume(_rabbitMQConfiguration.QueueName, false, $"{Environment.MachineName}-{Guid.NewGuid()}", consumer: consumer);
+                var tagConsummer = channel.BasicConsume(_queueConfiguration.QueueName, false, $"{Environment.MachineName}-{Guid.NewGuid()}", consumer: consumer);
 
                 do
                 {
@@ -89,7 +92,7 @@ namespace DotNetBaseQueue.RabbitMQ.HostService
             }
         }
 
-        private async Task ProcessMessageAsync(IRabbitEventHandler<IEntidade> commandHandler, IModel channel, BasicDeliverEventArgs basicGetResult)
+        private async Task ProcessMessageAsync(IQueueEventHandler<IEntidade> commandHandler, IModel channel, BasicDeliverEventArgs basicGetResult)
         {
             _logger.LogInformation("Message received! starting processing.");
 
@@ -106,8 +109,8 @@ namespace DotNetBaseQueue.RabbitMQ.HostService
             catch (RetryException ex)
             {
                 _logger.LogError(ex, "Retry message error");
-                channel.BasicPublish(exchange: _rabbitMQConfiguration.ExchangeName,
-                                    routingKey: $"{_rabbitMQConfiguration.QueueName}{QueueConstraints.PATH_RETRY}",
+                channel.BasicPublish(exchange: _queueConfiguration.ExchangeName,
+                                    routingKey: $"{_queueConfiguration.QueueName}{QueueConstraints.PATH_RETRY}",
                                     basicProperties: basicGetResult.BasicProperties,
                                     body: basicGetResult.Body);
                 channel.BasicAck(basicGetResult.DeliveryTag, false);

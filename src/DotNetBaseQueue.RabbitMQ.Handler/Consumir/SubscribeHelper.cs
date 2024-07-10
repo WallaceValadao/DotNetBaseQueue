@@ -27,49 +27,49 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Consumir
                     throw new Exception();
                 }
 
-                if (entity is IRabbitEventRetry retry)
+                if (entity is IQueueEventRetry retry)
                     retry.Retry = Convert.ToInt32(retrys);
             }
 
             return entity;
         }
         
-        public static void ValidateConfig(this RabbitConfiguration rabbitMQConfiguration)
+        public static void ValidateConfig(this QueueConfiguration queueConfiguration)
         {
-            if (rabbitMQConfiguration.Port < 1)
-                CreateException(nameof(rabbitMQConfiguration.Port), "is less than 1");
+            if (queueConfiguration.Port < 1)
+                CreateException(nameof(queueConfiguration.Port), "is less than 1");
 
-            if (rabbitMQConfiguration.NumberOfWorkroles < 1) 
-                CreateException(nameof(rabbitMQConfiguration.NumberOfWorkroles), "is less than 1");
+            if (queueConfiguration.NumberOfWorkroles < 1) 
+                CreateException(nameof(queueConfiguration.NumberOfWorkroles), "is less than 1");
 
-            if (rabbitMQConfiguration.PrefetchCount < 1) 
-                CreateException(nameof(rabbitMQConfiguration.PrefetchCount), "is less than 1");
+            if (queueConfiguration.PrefetchCount < 1) 
+                CreateException(nameof(queueConfiguration.PrefetchCount), "is less than 1");
 
-            if (string.IsNullOrEmpty(rabbitMQConfiguration.HostName)) 
-                CreateException(nameof(rabbitMQConfiguration.HostName), "is null or empty");
+            if (string.IsNullOrEmpty(queueConfiguration.HostName)) 
+                CreateException(nameof(queueConfiguration.HostName), "is null or empty");
 
-            if (string.IsNullOrEmpty(rabbitMQConfiguration.UserName)) 
-                CreateException(nameof(rabbitMQConfiguration.UserName), "is null or empty");
+            if (string.IsNullOrEmpty(queueConfiguration.UserName)) 
+                CreateException(nameof(queueConfiguration.UserName), "is null or empty");
 
-            if (string.IsNullOrEmpty(rabbitMQConfiguration.Password)) 
-                CreateException(nameof(rabbitMQConfiguration.Password), "is null or empty");
+            if (string.IsNullOrEmpty(queueConfiguration.Password)) 
+                CreateException(nameof(queueConfiguration.Password), "is null or empty");
 
-            if (string.IsNullOrEmpty(rabbitMQConfiguration.ExchangeName)) 
-                CreateException(nameof(rabbitMQConfiguration.ExchangeName), "is null or empty");
+            if (string.IsNullOrEmpty(queueConfiguration.ExchangeName)) 
+                CreateException(nameof(queueConfiguration.ExchangeName), "is null or empty");
 
-            if (string.IsNullOrEmpty(rabbitMQConfiguration.ExchangeType)) 
-                CreateException(nameof(rabbitMQConfiguration.ExchangeType), "is null or empty");
+            if (string.IsNullOrEmpty(queueConfiguration.ExchangeType)) 
+                CreateException(nameof(queueConfiguration.ExchangeType), "is null or empty");
 
-            if (string.IsNullOrEmpty(rabbitMQConfiguration.RoutingKey)) 
-                CreateException(nameof(rabbitMQConfiguration.RoutingKey), "is null or empty");
+            if (string.IsNullOrEmpty(queueConfiguration.RoutingKey)) 
+                CreateException(nameof(queueConfiguration.RoutingKey), "is null or empty");
                 
-            if (string.IsNullOrEmpty(rabbitMQConfiguration.QueueName)) 
-                CreateException(nameof(rabbitMQConfiguration.QueueName), "is null or empty");
+            if (string.IsNullOrEmpty(queueConfiguration.QueueName)) 
+                CreateException(nameof(queueConfiguration.QueueName), "is null or empty");
         }
 
-        internal static void CreateException(string nomeParametro, string regra)
+        internal static void CreateException(string nameParameter, string rule)
         {
-            throw new ArgumentException($"RabbitMQ Subscribe configuration is incorrect, {nomeParametro} {regra}.", nomeParametro);
+            throw new ArgumentException($"RabbitMQ Subscribe configuration is incorrect, {nameParameter} {rule}.", nameParameter);
         }
     }
 }

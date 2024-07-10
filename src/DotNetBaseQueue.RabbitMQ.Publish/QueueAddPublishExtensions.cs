@@ -4,28 +4,29 @@ using DotNetBaseQueue.Interfaces;
 using DotNetBaseQueue.Interfaces.Configs;
 using DotNetBaseQueue.RabbitMQ.Publicar.Implementation;
 using DotNetBaseQueue.RabbitMQ.Publicar.Interfaces;
+using DotNetBaseQueue.QueueMQ.Publish;
 
 namespace DotNetBaseQueue.RabbitMQ.Publish
 {
     public static class QueueAddPublishExtensions
     {
-        public static void AddQueuePublishSingleton(this IServiceCollection services, RabbitHostConfiguration rabbitMQConfiguration)
+        public static void AddQueuePublishSingleton(this IServiceCollection services, QueueHostConfiguration queueMQConfiguration)
         {
-            services.AddQueuePublish(rabbitMQConfiguration);
+            services.AddQueuePublish(queueMQConfiguration);
         }
 
-        public static void AddQueuePublishSingleton(this IServiceCollection services, IConfiguration configuration, string configSectionRabbitMQ = "RabbitMQConfiguration")
+        public static void AddQueuePublishSingleton(this IServiceCollection services, IConfiguration configuration, string configSectionRabbitMQ = "QueueConfiguration")
         {
-            var rabbitHostConfiguration = configuration.GetSection(configSectionRabbitMQ).Get<RabbitHostConfiguration>();
-            services.AddQueuePublish(rabbitHostConfiguration);
+            var queueMQConfiguration = configuration.GetSection(configSectionRabbitMQ).Get<QueueHostConfiguration>();
+            services.AddQueuePublish(queueMQConfiguration);
         }
 
-        private static void AddQueuePublish(this IServiceCollection services, RabbitHostConfiguration rabbitMQConfiguration)
+        private static void AddQueuePublish(this IServiceCollection services, QueueHostConfiguration queueMQConfiguration)
         {
             services.AddSingleton<IRabbitMqConnectionFactory, RabbitMqConnectionFactory>();
             services.AddSingleton<ISendMessageFactory, SendMessageFactory>();
 
-            services.AddSingleton(rabbitMQConfiguration);
+            services.AddSingleton(queueMQConfiguration);
             services.AddSingleton<IQueuePublish, QueuePublish>();
         }
     }

@@ -1,6 +1,6 @@
 namespace DotNetBaseQueue.Interfaces.Event
 {
-    public interface IRabbitEventRetry : IRabbitEvent
+    public interface IQueueEventRetry : IQueueEvent
     {
         int Retry { get; set; }
     }

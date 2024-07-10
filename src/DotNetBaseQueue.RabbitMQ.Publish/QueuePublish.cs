@@ -6,112 +6,112 @@ using DotNetBaseQueue.Interfaces.Configs;
 using DotNetBaseQueue.Interfaces;
 using DotNetBaseQueue.RabbitMQ.Publicar.Interfaces;
 
-namespace DotNetBaseQueue.RabbitMQ.Publish
+namespace DotNetBaseQueue.QueueMQ.Publish
 {
     public class QueuePublish : IQueuePublish
     {
         private readonly IConfiguration _configuration;
         private readonly ISendMessageFactory _sendMessageFactory;
 
-        private readonly RabbitHostConfiguration _rabbitHostConfiguration;
-        private readonly ConcurrentDictionary<string, (RabbitHostConfiguration, RabbitInfoQueuePublishConfiguration)> _configurationQueues;
+        private readonly QueueHostConfiguration _queueHostConfiguration;
+        private readonly ConcurrentDictionary<string, (QueueHostConfiguration, QueueInfoQueuePublishConfiguration)> _configurationQueues;
 
-        public QueuePublish(IConfiguration configuration, ISendMessageFactory sendMessageFactory, RabbitHostConfiguration rabbitMQConfiguration)
+        public QueuePublish(IConfiguration configuration, ISendMessageFactory sendMessageFactory, QueueHostConfiguration QueueMQConfiguration)
         {
             _configuration = configuration;
             _sendMessageFactory = sendMessageFactory;
-            _rabbitHostConfiguration = rabbitMQConfiguration;
+            _queueHostConfiguration = QueueMQConfiguration;
 
-            _configurationQueues = new ConcurrentDictionary<string, (RabbitHostConfiguration, RabbitInfoQueuePublishConfiguration)>();
+            _configurationQueues = new ConcurrentDictionary<string, (QueueHostConfiguration, QueueInfoQueuePublishConfiguration)>();
 
             ValidateConfiguration();
         }
 
         private void ValidateConfiguration()
         {
-            if (string.IsNullOrEmpty(_rabbitHostConfiguration.HostName))
-                throw new ArgumentException("The configuration of the RabbitMQConfiguration section of the appsetings.json file is incorrect.");
+            if (string.IsNullOrEmpty(_queueHostConfiguration.HostName))
+                throw new ArgumentException("The configuration of the QueueMQConfiguration section of the appsetings.json file is incorrect.");
 
-            if (string.IsNullOrEmpty(_rabbitHostConfiguration.UserName))
-                throw new ArgumentException("The configuration of the RabbitMQConfiguration section of the appsetings.json file is incorrect.");
+            if (string.IsNullOrEmpty(_queueHostConfiguration.UserName))
+                throw new ArgumentException("The configuration of the QueueMQConfiguration section of the appsetings.json file is incorrect.");
 
-            if (string.IsNullOrEmpty(_rabbitHostConfiguration.Password))
-                throw new ArgumentException("The configuration of the RabbitMQConfiguration section of the appsetings.json file is incorrect.");
+            if (string.IsNullOrEmpty(_queueHostConfiguration.Password))
+                throw new ArgumentException("The configuration of the QueueMQConfiguration section of the appsetings.json file is incorrect.");
 
-            if (_rabbitHostConfiguration.Port < 1)
-                throw new ArgumentException("The configuration of the RabbitMQConfiguration section of the appsetings.json file is incorrect.");
+            if (_queueHostConfiguration.Port < 1)
+                throw new ArgumentException("The configuration of the QueueMQConfiguration section of the appsetings.json file is incorrect.");
         }
 
-        private (RabbitHostConfiguration rabbitConfiguration, RabbitInfoQueuePublishConfiguration queueConfiguration) GetConfiguration(string configPublishSectionRabbitMQ)
+        private (QueueHostConfiguration QueueConfiguration, QueueInfoQueuePublishConfiguration queueConfiguration) GetConfiguration(string configPublishSectionQueueMQ)
         {
-            if (!_configurationQueues.TryGetValue(configPublishSectionRabbitMQ, out var configurationQueue))
+            if (!_configurationQueues.TryGetValue(configPublishSectionQueueMQ, out var configurationQueue))
             {
-                var queueConfiguration = _configuration.GetSection(configPublishSectionRabbitMQ)
-                                        .Get<RabbitInfoQueuePublishConfiguration>();
+                var queueConfiguration = _configuration.GetSection(configPublishSectionQueueMQ)
+                                        .Get<QueueInfoQueuePublishConfiguration>();
 
-                var rabbitConfiguration = _configuration.GetSection(configPublishSectionRabbitMQ).Get<RabbitHostConfiguration>();
+                var QueueConfiguration = _configuration.GetSection(configPublishSectionQueueMQ).Get<QueueHostConfiguration>();
 
-                if (string.IsNullOrEmpty(rabbitConfiguration.HostName))
-                    rabbitConfiguration = _rabbitHostConfiguration;
+                if (string.IsNullOrEmpty(QueueConfiguration.HostName))
+                    QueueConfiguration = _queueHostConfiguration;
 
-                configurationQueue = (rabbitConfiguration, queueConfiguration);
+                configurationQueue = (QueueConfiguration, queueConfiguration);
 
-                _configurationQueues.TryAdd(configPublishSectionRabbitMQ, configurationQueue);
+                _configurationQueues.TryAdd(configPublishSectionQueueMQ, configurationQueue);
             }
 
             return configurationQueue;
         }
 
-        public void Publish<T>(T entidade, string configPublishSectionRabbitMQ)
+        public void Publish<T>(T entidade, string configPublishSectionQueueMQ)
         {
-            var (rabbitConfiguration, queueConfiguration) = GetConfiguration(configPublishSectionRabbitMQ);
-            Publish(entidade, rabbitConfiguration, queueConfiguration.ExchangeName, queueConfiguration.RoutingKey);
+            var (QueueConfiguration, queueConfiguration) = GetConfiguration(configPublishSectionQueueMQ);
+            Publish(entidade, QueueConfiguration, queueConfiguration.ExchangeName, queueConfiguration.RoutingKey);
         }
 
-        public void Publish<T>(T entidade, RabbitHostConfiguration rabbitConfiguration, RabbitInfoQueuePublishConfiguration queueConfiguration)
+        public void Publish<T>(T entidade, QueueHostConfiguration QueueConfiguration, QueueInfoQueuePublishConfiguration queueConfiguration)
         {
-            Publish(entidade, rabbitConfiguration, queueConfiguration.ExchangeName, queueConfiguration.RoutingKey);
+            Publish(entidade, QueueConfiguration, queueConfiguration.ExchangeName, queueConfiguration.RoutingKey);
         }
 
-        public void Publish<T>(T entidade, RabbitInfoQueuePublishConfiguration info)
+        public void Publish<T>(T entidade, QueueInfoQueuePublishConfiguration info)
         {
-            Publish(entidade, _rabbitHostConfiguration, info.ExchangeName, info.RoutingKey);
+            Publish(entidade, _queueHostConfiguration, info.ExchangeName, info.RoutingKey);
         }
 
         public void Publish<T>(T entidade, string exchangeName, string routingKey)
         {
-            _sendMessageFactory.Publish(_rabbitHostConfiguration, entidade, exchangeName, routingKey);
+            _sendMessageFactory.Publish(_queueHostConfiguration, entidade, exchangeName, routingKey);
         }
 
-        public void PublishList<T>(IEnumerable<T> entidade, string configPublishSectionRabbitMQ)
+        public void PublishList<T>(IEnumerable<T> entidade, string configPublishSectionQueueMQ)
         {
-            var (rabbitConfiguration, queueConfiguration) = GetConfiguration(configPublishSectionRabbitMQ);
-            PublishList(entidade, rabbitConfiguration, queueConfiguration.ExchangeName, queueConfiguration.RoutingKey);
+            var (QueueConfiguration, queueConfiguration) = GetConfiguration(configPublishSectionQueueMQ);
+            PublishList(entidade, QueueConfiguration, queueConfiguration.ExchangeName, queueConfiguration.RoutingKey);
         }
 
-        public void PublishList<T>(IEnumerable<T> entidade, RabbitHostConfiguration rabbitConfiguration, RabbitInfoQueuePublishConfiguration queueConfiguration)
+        public void PublishList<T>(IEnumerable<T> entidade, QueueHostConfiguration QueueConfiguration, QueueInfoQueuePublishConfiguration queueConfiguration)
         {
-            PublishList(entidade, rabbitConfiguration, queueConfiguration.ExchangeName, queueConfiguration.RoutingKey);
+            PublishList(entidade, QueueConfiguration, queueConfiguration.ExchangeName, queueConfiguration.RoutingKey);
         }
 
-        public void PublishList<T>(IEnumerable<T> entidade, RabbitInfoQueuePublishConfiguration info)
+        public void PublishList<T>(IEnumerable<T> entidade, QueueInfoQueuePublishConfiguration info)
         {
-            PublishList(entidade, _rabbitHostConfiguration, info.ExchangeName, info.RoutingKey);
+            PublishList(entidade, _queueHostConfiguration, info.ExchangeName, info.RoutingKey);
         }
 
         public void PublishList<T>(IEnumerable<T> entidade, string exchangeName, string routingKey)
         {
-            PublishList<T>(entidade, _rabbitHostConfiguration, exchangeName, routingKey);
+            PublishList<T>(entidade, _queueHostConfiguration, exchangeName, routingKey);
         }
 
-        private void Publish<T>(T entidade, RabbitHostConfiguration rabbitHostConfiguration, string exchangeName, string routingKey)
+        private void Publish<T>(T entidade, QueueHostConfiguration queueHostConfiguration, string exchangeName, string routingKey)
         {
-            _sendMessageFactory.Publish(rabbitHostConfiguration, entidade, exchangeName, routingKey);
+            _sendMessageFactory.Publish(queueHostConfiguration, entidade, exchangeName, routingKey);
         }
 
-        private void PublishList<T>(IEnumerable<T> entidades, RabbitHostConfiguration rabbitHostConfiguration, string exchangeName, string routingKey)
+        private void PublishList<T>(IEnumerable<T> entidades, QueueHostConfiguration queueHostConfiguration, string exchangeName, string routingKey)
         {
-            _sendMessageFactory.PublishList(rabbitHostConfiguration, entidades, exchangeName, routingKey);
+            _sendMessageFactory.PublishList(queueHostConfiguration, entidades, exchangeName, routingKey);
         }
     }
 }

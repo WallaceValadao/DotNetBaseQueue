@@ -3,13 +3,13 @@ using DotNetBaseQueue.Interfaces.Event;
 
 namespace DotNetBaseQueue.RabbitMQ.HostService
 {
-    public class ConsumerConfiguration<IEntidade, IEvent> where IEntidade : class, IRabbitEvent where IEvent : class, IRabbitEventHandler<IEntidade>
+    public class ConsumerConfiguration<IEntidade, IEvent> where IEntidade : class, IQueueEvent where IEvent : class, IQueueEventHandler<IEntidade>
     {
-        public RabbitConfiguration RabbitMQConfiguration { get; }
+        public QueueConfiguration QueueConfiguration { get; }
 
-        public ConsumerConfiguration(RabbitConfiguration rabbitMQConfiguration)
+        public ConsumerConfiguration(QueueConfiguration queueMQConfiguration)
         {
-            this.RabbitMQConfiguration = rabbitMQConfiguration;
+            this.QueueConfiguration = queueMQConfiguration;
         }
     }
 }

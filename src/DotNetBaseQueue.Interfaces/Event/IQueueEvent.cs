@@ -1,4 +1,4 @@
 namespace DotNetBaseQueue.Interfaces.Event
 {
-    public interface IRabbitEvent { }
+    public interface IQueueEvent { }
 }

@@ -19,12 +19,12 @@ namespace DotNetBaseQueue.RabbitMQ.Publicar.Implementation
             _logger = logger;
         }
 
-        public void Publish<T>(RabbitHostConfiguration configuration, T entity = default, string exchangeName = "", string routingKey = "", bool mandatory = false)
+        public void Publish<T>(QueueHostConfiguration configuration, T entity = default, string exchangeName = "", string routingKey = "", bool mandatory = false)
         {
             Publish(configuration, entity, exchangeName, routingKey, mandatory, false);
         }
 
-        private void Publish<T>(RabbitHostConfiguration configuration, T entity, string exchangeName, string routingKey, bool mandatory, bool reconnect)
+        private void Publish<T>(QueueHostConfiguration configuration, T entity, string exchangeName, string routingKey, bool mandatory, bool reconnect)
         {
             try
             {
@@ -46,12 +46,12 @@ namespace DotNetBaseQueue.RabbitMQ.Publicar.Implementation
             }
         }
 
-        public void PublishList<T>(RabbitHostConfiguration configuration, IEnumerable<T> entities = default, string exchangeName = "", string routingKey = "", bool mandatory = false)
+        public void PublishList<T>(QueueHostConfiguration configuration, IEnumerable<T> entities = default, string exchangeName = "", string routingKey = "", bool mandatory = false)
         {
             PublishList(configuration, entities, exchangeName, routingKey, mandatory, false);
         }
 
-        private void PublishList<T>(RabbitHostConfiguration configuration, IEnumerable<T> entities, string exchangeName, string routingKey, bool mandatory, bool reconnect)
+        private void PublishList<T>(QueueHostConfiguration configuration, IEnumerable<T> entities, string exchangeName, string routingKey, bool mandatory, bool reconnect)
         {
             try
             {

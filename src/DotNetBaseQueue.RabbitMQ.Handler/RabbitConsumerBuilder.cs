@@ -2,7 +2,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using DotNetBaseQueue.Interfaces.Configs;
-using DotNetBaseQueue.RabbitMQ.Handler.Extensions;
 
 namespace DotNetBaseQueue.RabbitMQ.Handler
 {
@@ -10,35 +9,35 @@ namespace DotNetBaseQueue.RabbitMQ.Handler
     {
         internal IServiceCollection Services { get; private set; }
         internal IConfiguration Configuration { get; private set; }
-        internal RabbitHostConfiguration RabbitHostConfiguration { get; private set; }
+        internal QueueHostConfiguration QueueHostConfiguration { get; private set; }
 
-        internal RabbitConsumerBuilder(IServiceCollection services, IConfiguration configuration, string configSectionRabbitMQ)
+        internal RabbitConsumerBuilder(IServiceCollection services, IConfiguration configuration, string configSectionQueue)
         {
             Services = services;
             Configuration = configuration;
 
-            AddConfiguration(configSectionRabbitMQ);
+            AddConfiguration(configSectionQueue);
         }
 
-        internal RabbitConsumerBuilder(IServiceCollection services, IConfiguration configuration, RabbitHostConfiguration rabbitConfiguration)
+        internal RabbitConsumerBuilder(IServiceCollection services, IConfiguration configuration, QueueHostConfiguration queueConfiguration)
         {
             Services = services;
             Configuration = configuration;
 
-            AddConfiguration(rabbitConfiguration);
+            AddConfiguration(queueConfiguration);
         }
 
-        private RabbitConsumerBuilder AddConfiguration(string configSectionRabbitMQ)
+        private RabbitConsumerBuilder AddConfiguration(string configSectionQueue)
         {
-            var rabbitMQConfiguration = Configuration.GetSection(configSectionRabbitMQ)
-                                            .Get<RabbitHostConfiguration>();
+            var rabbitMQConfiguration = Configuration.GetSection(configSectionQueue)
+                                            .Get<QueueHostConfiguration>();
 
             return AddConfiguration(rabbitMQConfiguration);
         }
 
-        private RabbitConsumerBuilder AddConfiguration(RabbitHostConfiguration rabbitConfiguration)
+        private RabbitConsumerBuilder AddConfiguration(QueueHostConfiguration queueConfiguration)
         {
-            RabbitHostConfiguration = rabbitConfiguration;
+            QueueHostConfiguration = queueConfiguration;
 
             return this;
         }

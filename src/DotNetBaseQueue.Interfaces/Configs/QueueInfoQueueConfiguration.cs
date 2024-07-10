@@ -1,6 +1,6 @@
 namespace DotNetBaseQueue.Interfaces.Configs
 {
-    public class RabbitInfoQueueConfiguration : RabbitInfoQueuePublishConfiguration
+    public class QueueInfoQueueConfiguration : QueueInfoQueuePublishConfiguration
     {
         public string ExchangeType { get; set; }
         public string QueueName { get; set; }

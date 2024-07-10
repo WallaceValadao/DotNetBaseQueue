@@ -15,18 +15,18 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Consumir
 {
     internal static class ConnectionHandler
     {
-        internal static IModel CreateConnection(RabbitConfiguration rabbitMQConfiguration, ILogger logger)
+        internal static IModel CreateConnection(QueueConfiguration queueConfiguration, ILogger logger)
         {
-            return CreateModel(rabbitMQConfiguration, logger);
+            return CreateModel(queueConfiguration, logger);
         }
 
-        internal static IModel CreateModel(RabbitConfiguration rabbitMQConfiguration, ILogger logger, bool reconnect = false, bool deleteQueueDead = false)
+        internal static IModel CreateModel(QueueConfiguration queueConfiguration, ILogger logger, bool reconnect = false, bool deleteQueueDead = false)
         {
             try
             {
-                var connection = CreateConnection(rabbitMQConfiguration, logger, reconnect);
+                var connection = CreateConnection(queueConfiguration, logger, reconnect);
                 var channel = connection.CreateModel();
-                channel.ExchangeDeclare(exchange: rabbitMQConfiguration.ExchangeName, type: rabbitMQConfiguration.ExchangeType, durable: true);
+                channel.ExchangeDeclare(exchange: queueConfiguration.ExchangeName, type: queueConfiguration.ExchangeType, durable: true);
 
                 channel.ModelShutdown += (sender, ea) =>
                 {
@@ -34,14 +34,14 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Consumir
                 };
 
                 Dictionary<string, object> args = null;
-                if (rabbitMQConfiguration.CreateDeadLetterQueue)
-                    args = channel.CreateDeadLetterQueue(rabbitMQConfiguration.ExchangeName, rabbitMQConfiguration.QueueName, deleteQueueDead);
+                if (queueConfiguration.CreateDeadLetterQueue)
+                    args = channel.CreateDeadLetterQueue(queueConfiguration.ExchangeName, queueConfiguration.QueueName, deleteQueueDead);
 
-                if (rabbitMQConfiguration.CreateRetryQueue)
-                    channel.CreateRetryQueue(rabbitMQConfiguration.ExchangeName, rabbitMQConfiguration.RoutingKey, rabbitMQConfiguration.QueueName, rabbitMQConfiguration.SecondsToRetry);
+                if (queueConfiguration.CreateRetryQueue)
+                    channel.CreateRetryQueue(queueConfiguration.ExchangeName, queueConfiguration.RoutingKey, queueConfiguration.QueueName, queueConfiguration.SecondsToRetry);
 
-                channel.QueueDeclare(queue: rabbitMQConfiguration.QueueName, durable: true, exclusive: false, autoDelete: false, arguments: args);
-                channel.QueueBind(queue: rabbitMQConfiguration.QueueName, exchange: rabbitMQConfiguration.ExchangeName, routingKey: rabbitMQConfiguration.RoutingKey);
+                channel.QueueDeclare(queue: queueConfiguration.QueueName, durable: true, exclusive: false, autoDelete: false, arguments: args);
+                channel.QueueBind(queue: queueConfiguration.QueueName, exchange: queueConfiguration.ExchangeName, routingKey: queueConfiguration.RoutingKey);
 
                 logger.LogInformation("Successfully created channel.");
 
@@ -54,22 +54,22 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Consumir
                     
                 logger.LogError(ex, "Invalid configuration in the dead queue. The queue will be updated.");
 
-                return CreateModel(rabbitMQConfiguration, logger, reconnect: true, deleteQueueDead: true);
+                return CreateModel(queueConfiguration, logger, reconnect: true, deleteQueueDead: true);
             }
             catch
             {
                 if (reconnect)
                     throw;
 
-                return CreateModel(rabbitMQConfiguration, logger, reconnect: true);
+                return CreateModel(queueConfiguration, logger, reconnect: true);
             }
         }
 
         private static readonly ConcurrentDictionary<string, IConnection> connections = new ConcurrentDictionary<string, IConnection>();
 
-        private static IConnection CreateConnection(RabbitConfiguration rabbitMQConfiguration, ILogger logger, bool reconnect)
+        private static IConnection CreateConnection(QueueConfiguration queueConfiguration, ILogger logger, bool reconnect)
         {
-            var nome = $"{rabbitMQConfiguration.HostName}-{rabbitMQConfiguration.Port}-{rabbitMQConfiguration.UserName}";
+            var nome = $"{queueConfiguration.HostName}-{queueConfiguration.Port}-{queueConfiguration.UserName}";
 
             if (connections.TryGetValue(nome, out var connection))
             {
@@ -86,19 +86,19 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Consumir
                     logger.LogError(ex, "Error dropping connection");
                 }
 
-                return CreateConnection(rabbitMQConfiguration, logger, false);
+                return CreateConnection(queueConfiguration, logger, false);
             }
 
             var nameMachine = string.Empty;
 
             var factory = new ConnectionFactory()
             {
-                HostName = rabbitMQConfiguration.HostName,
-                Port = rabbitMQConfiguration.Port,
-                UserName = rabbitMQConfiguration.UserName,
-                Password = rabbitMQConfiguration.Password,
-                VirtualHost = rabbitMQConfiguration.VirtualHost,
-                ClientProperties = GetProperties(rabbitMQConfiguration, logger, out nameMachine),
+                HostName = queueConfiguration.HostName,
+                Port = queueConfiguration.Port,
+                UserName = queueConfiguration.UserName,
+                Password = queueConfiguration.Password,
+                VirtualHost = queueConfiguration.VirtualHost,
+                ClientProperties = GetProperties(queueConfiguration, logger, out nameMachine),
                 ClientProvidedName = nameMachine
             };
 
@@ -114,7 +114,7 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Consumir
         }
 
 
-        public static Dictionary<string, object> GetProperties(RabbitConfiguration rabbitMQConfiguration, ILogger logger, out string nameMachine)
+        public static Dictionary<string, object> GetProperties(QueueConfiguration queueConfiguration, ILogger logger, out string nameMachine)
         {
             nameMachine = Environment.MachineName;
 
@@ -131,7 +131,7 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Consumir
                 { "application", nameApp},
                 { "application_location", folderApp},
                 { "machine_name", nameMachine},
-                { "user", rabbitMQConfiguration.UserName},
+                { "user", queueConfiguration.UserName},
                 { "connected", DateTime.UtcNow.ToString("u")}
             };
         }

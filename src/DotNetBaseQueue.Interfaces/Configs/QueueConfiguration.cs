@@ -1,6 +1,6 @@
 namespace DotNetBaseQueue.Interfaces.Configs
 {
-    public class RabbitConfiguration : RabbitInfoQueueConfiguration
+    public class QueueConfiguration : QueueInfoQueueConfiguration
     {
         public string HostName { get; set; }
         public int Port { get; set; }

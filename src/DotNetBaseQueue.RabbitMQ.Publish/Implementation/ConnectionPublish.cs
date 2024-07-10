@@ -11,15 +11,15 @@ namespace DotNetBaseQueue.RabbitMQ.Publicar.Implementation
         public readonly IConnection connection;
         public IModel Channel { get; private set; }
 
-        internal ConnectionPublish(RabbitHostConfiguration rabbitHostConfiguration)
+        internal ConnectionPublish(QueueHostConfiguration queueHostConfiguration)
         {
             connectionFactory = new ConnectionFactory()
             {
-                HostName = rabbitHostConfiguration.HostName,
-                Port = rabbitHostConfiguration.Port,
-                UserName = rabbitHostConfiguration.UserName,
-                Password = rabbitHostConfiguration.Password,
-                VirtualHost = rabbitHostConfiguration.VirtualHost
+                HostName = queueHostConfiguration.HostName,
+                Port = queueHostConfiguration.Port,
+                UserName = queueHostConfiguration.UserName,
+                Password = queueHostConfiguration.Password,
+                VirtualHost = queueHostConfiguration.VirtualHost
             };
 
             connection = connectionFactory.CreateConnection();

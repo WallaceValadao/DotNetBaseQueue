@@ -71,9 +71,9 @@ namespace DotNetBaseQueue.QueueMQ.HostService
 
             while (!stoppingToken.IsCancellationRequested)
             {
-                var consumer = new AsyncEventingBasicConsumer(channel);
+                var consumer = new EventingBasicConsumer(channel);
 
-                consumer.Received += (sender, ea) => ProcessMessageAsync(channel, ea);
+                consumer.Received += (sender, ea) => ProcessMessageAsync(channel, ea).GetAwaiter().GetResult();
 
                 _logger.LogInformation("Starting consumer.");
                 var tagConsummer = channel.BasicConsume(_queueConfiguration.QueueName, false, $"{Environment.MachineName}-{Guid.NewGuid()}", consumer: consumer);
@@ -119,10 +119,20 @@ namespace DotNetBaseQueue.QueueMQ.HostService
                         return;
                     }
 
+                    if (basicGetResult.BasicProperties.Headers == null)
+                        basicGetResult.BasicProperties.Headers = new Dictionary<string, object>();
+
                     if (basicGetResult.BasicProperties.Headers.TryGetValue(RETRY_QUEUE_HEADER, out var retryString))
                     {
                         _ = int.TryParse(retryString.ToString(), out retry);
                         basicGetResult.BasicProperties.Headers.Remove(RETRY_QUEUE_HEADER);
+                    }
+
+                    if (retry >= _queueConfiguration.NumberTryRetry)
+                    {
+                        _logger.LogError(ex, "Error: num max retry.");
+                        channel.BasicNack(basicGetResult.DeliveryTag, false, false);
+                        return;
                     }
 
                     retry++;

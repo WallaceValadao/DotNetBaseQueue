@@ -27,6 +27,6 @@
   <ItemGroup>
     <PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
     <PackageReference Include="System.Text.Json" Version="8.0.4" />
-    <PackageReference Include="DotNetBaseQueue.Interfaces" Version="[1.0.4,)" />
+    <PackageReference Include="DotNetBaseQueue.Interfaces" Version="[1.0.5,)" />
   </ItemGroup>
 </Project>

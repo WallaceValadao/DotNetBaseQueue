@@ -5,8 +5,10 @@ namespace DotNetBaseQueue.Interfaces.Configs
         public string ExchangeType { get; set; }
         public string QueueName { get; set; }
         
-        public bool CreateDeadLetterQueue { get; set; } = false;
-        public bool CreateRetryQueue { get; set; } = false;
+        public bool CreateDeadLetterQueue { get; set; } = true;
+        public bool CreateRetryQueue { get; set; } = true;
+        public int NumberTryRetry { get; set; } = 3;
+        public int SecondsToRetry { get; set; } = 2;
 
         public int NumberOfWorkroles { get; set; } = 1;
         public ushort PrefetchCount { get; set; } = 1;

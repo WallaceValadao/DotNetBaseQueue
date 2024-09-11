@@ -25,7 +25,7 @@ namespace DotNetBaseQueue.RabbitMQ.HostService
 
         public override Task StartAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation($"Started consumer in queue.");
+            _logger.LogInformation("Started consumer in queue.");
 
             return base.StartAsync(cancellationToken);
         }
@@ -39,7 +39,7 @@ namespace DotNetBaseQueue.RabbitMQ.HostService
 
         public override Task StopAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation($"Finishing consumer from the queue.");
+            _logger.LogInformation("Finishing consumer from the queue.");
             _hostApplicationLifetime.StopApplication();
             return base.StopAsync(cancellationToken);
         }

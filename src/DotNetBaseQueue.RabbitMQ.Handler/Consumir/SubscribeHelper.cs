@@ -15,22 +15,6 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Consumir
         {
             var entity = basicDeliverEventArgs.Body.GetMessage<T>();
 
-            if (basicDeliverEventArgs.BasicProperties != null && basicDeliverEventArgs.BasicProperties.Headers != null && basicDeliverEventArgs.BasicProperties.Headers.Any())
-            {
-                var listaHeader = basicDeliverEventArgs.BasicProperties.Headers["x-death"] as List<Object>;
-                var dictionaryItem = listaHeader[0] as Dictionary<string, object>;
-
-                var retrys = dictionaryItem["count"];
-                if ((long)retrys > 100)
-                {
-                    channel.BasicAck(deliveryTag: basicDeliverEventArgs.DeliveryTag, multiple: false);
-                    throw new Exception();
-                }
-
-                if (entity is IQueueEventRetry retry)
-                    retry.Retry = Convert.ToInt32(retrys);
-            }
-
             return entity;
         }
         

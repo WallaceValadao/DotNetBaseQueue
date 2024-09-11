@@ -10,6 +10,8 @@ namespace DotNetBaseQueue.QueueMQ.Publish
 {
     public class QueuePublish : IQueuePublish
     {
+        private const string QUEUE_MQCONFIG = "The configuration of the QueueMQConfiguration section of the appsetings.json file is incorrect.";
+
         private readonly IConfiguration _configuration;
         private readonly ISendMessageFactory _sendMessageFactory;
 
@@ -30,24 +32,23 @@ namespace DotNetBaseQueue.QueueMQ.Publish
         private void ValidateConfiguration()
         {
             if (string.IsNullOrEmpty(_queueHostConfiguration.HostName))
-                throw new ArgumentException("The configuration of the QueueMQConfiguration section of the appsetings.json file is incorrect.");
+                throw new ArgumentException(QUEUE_MQCONFIG);
 
             if (string.IsNullOrEmpty(_queueHostConfiguration.UserName))
-                throw new ArgumentException("The configuration of the QueueMQConfiguration section of the appsetings.json file is incorrect.");
+                throw new ArgumentException(QUEUE_MQCONFIG);
 
             if (string.IsNullOrEmpty(_queueHostConfiguration.Password))
-                throw new ArgumentException("The configuration of the QueueMQConfiguration section of the appsetings.json file is incorrect.");
+                throw new ArgumentException(QUEUE_MQCONFIG);
 
             if (_queueHostConfiguration.Port < 1)
-                throw new ArgumentException("The configuration of the QueueMQConfiguration section of the appsetings.json file is incorrect.");
+                throw new ArgumentException(QUEUE_MQCONFIG);
         }
 
         private (QueueHostConfiguration QueueConfiguration, QueueInfoQueuePublishConfiguration queueConfiguration) GetConfiguration(string configPublishSectionQueueMQ)
         {
             if (!_configurationQueues.TryGetValue(configPublishSectionQueueMQ, out var configurationQueue))
             {
-                var queueConfiguration = _configuration.GetSection(configPublishSectionQueueMQ)
-                                        .Get<QueueInfoQueuePublishConfiguration>();
+                var queueConfiguration = _configuration.GetSection(configPublishSectionQueueMQ).Get<QueueInfoQueuePublishConfiguration>();
 
                 var QueueConfiguration = _configuration.GetSection(configPublishSectionQueueMQ).Get<QueueHostConfiguration>();
 

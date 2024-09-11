@@ -123,8 +123,7 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Consumir
 
             return new Dictionary<string, object>
             {
-                {"client_api",  "RabbitMqExtension"},
-                { "product", nameApp},
+                {"client_api",  "DotNetBaseQueue.RabbitMQ"},
                 { "platform", GetPlatform()},
                 { "os", Environment.OSVersion.ToString()},
                 { "version", GetVersionApp()},
@@ -136,20 +135,20 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Consumir
             };
         }
 
-        private static void GetNameApp(ILogger logger, out string nomeAplicacao, out string pastaAplicacao)
+        private static void GetNameApp(ILogger logger, out string nameApp, out string folderApp)
         {
-            var caminhoAplicacao = Environment.GetCommandLineArgs()[0];
+            var pathApp = Environment.GetCommandLineArgs()[0];
 
-            nomeAplicacao = "unknown";
-            pastaAplicacao = "unknown";
+            nameApp = "unknown";
+            folderApp = "unknown";
 
-            if (string.IsNullOrWhiteSpace(caminhoAplicacao))
+            if (string.IsNullOrWhiteSpace(pathApp))
                 return;
 
             try
             {
-                nomeAplicacao = Path.GetFileName(caminhoAplicacao);
-                pastaAplicacao = Path.GetDirectoryName(caminhoAplicacao) ?? "unknown";
+                nameApp = Path.GetFileName(pathApp);
+                folderApp = Path.GetDirectoryName(pathApp) ?? "unknown";
             }
             catch (Exception ex)
             {

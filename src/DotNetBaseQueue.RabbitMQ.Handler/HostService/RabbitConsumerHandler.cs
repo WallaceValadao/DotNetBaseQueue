@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using DotNetBaseQueue.Interfaces.Configs;
 using DotNetBaseQueue.Interfaces.Event;
 using DotNetBaseQueue.RabbitMQ.Handler.Consumir;
-using DotNetBaseQueue.RabbitMQ.Core.Exceptions;
 using DotNetBaseQueue.RabbitMQ.Interfaces;
 using DotNetBaseQueue.RabbitMQ.HostService;
 using RabbitMQ.Client.Events;
@@ -17,8 +16,8 @@ using DotNetBaseQueue.RabbitMQ.Core;
 
 namespace DotNetBaseQueue.QueueMQ.HostService
 {
-    public class RabbitConsumerHandler<IEntidade, IEvent> : 
-        IConsumerHandler where IEntidade : class, IQueueEvent 
+    public class RabbitConsumerHandler<IEntidade, IEvent> :
+        IConsumerHandler where IEntidade : class, IQueueEvent
         where IEvent : class, IQueueEventHandler<IEntidade>
     {
         private readonly ILogger<RabbitConsumerHandler<IEntidade, IEvent>> _logger;
@@ -27,6 +26,8 @@ namespace DotNetBaseQueue.QueueMQ.HostService
 
         private readonly string _mensagemAguardando;
         private TimeSpan _secondsToRetry;
+
+        private const string RETRY_QUEUE_HEADER = "q_retry_qt";
 
         public RabbitConsumerHandler(ILogger<RabbitConsumerHandler<IEntidade, IEvent>> logger, IServiceProvider serviceProvider, ConsumerConfiguration<IEntidade, IEvent> queueMQConfiguration)
         {
@@ -70,12 +71,9 @@ namespace DotNetBaseQueue.QueueMQ.HostService
 
             while (!stoppingToken.IsCancellationRequested)
             {
-                var scope = _serviceProvider.CreateScope();
-                var commandHandler = scope.ServiceProvider.GetService<IEvent>();
+                var consumer = new AsyncEventingBasicConsumer(channel);
 
-                var consumer = new EventingBasicConsumer(channel);
-
-                consumer.Received += (sender, ea) => ProcessMessageAsync(commandHandler, channel, ea).GetAwaiter().GetResult();
+                consumer.Received += (sender, ea) => ProcessMessageAsync(channel, ea);
 
                 _logger.LogInformation("Starting consumer.");
                 var tagConsummer = channel.BasicConsume(_queueConfiguration.QueueName, false, $"{Environment.MachineName}-{Guid.NewGuid()}", consumer: consumer);
@@ -92,33 +90,54 @@ namespace DotNetBaseQueue.QueueMQ.HostService
             }
         }
 
-        private async Task ProcessMessageAsync(IQueueEventHandler<IEntidade> commandHandler, IModel channel, BasicDeliverEventArgs basicGetResult)
+        private async Task ProcessMessageAsync(IModel channel, BasicDeliverEventArgs basicGetResult)
         {
             _logger.LogInformation("Message received! starting processing.");
 
-            try
+            using (var scope = _serviceProvider.CreateScope())
             {
-                var entidade = basicGetResult.GetEntityQueue<IEntidade>(channel);
+                var commandHandler = scope.ServiceProvider.GetService<IEvent>();
 
-                await commandHandler.HandleAsync(entidade);
+                try
+                {
+                    var entidade = basicGetResult.GetEntityQueue<IEntidade>(channel);
 
-                channel.BasicAck(deliveryTag: basicGetResult.DeliveryTag, multiple: false);
+                    await commandHandler.HandleAsync(entidade);
 
-                _logger.LogInformation("Message processed successfully.");
-            }
-            catch (RetryException ex)
-            {
-                _logger.LogError(ex, "Retry message error");
-                channel.BasicPublish(exchange: _queueConfiguration.ExchangeName,
-                                    routingKey: $"{_queueConfiguration.QueueName}{QueueConstraints.PATH_RETRY}",
-                                    basicProperties: basicGetResult.BasicProperties,
-                                    body: basicGetResult.Body);
-                channel.BasicAck(basicGetResult.DeliveryTag, false);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error message");
-                channel.BasicNack(basicGetResult.DeliveryTag, false, false);
+                    channel.BasicAck(deliveryTag: basicGetResult.DeliveryTag, multiple: false);
+
+                    _logger.LogInformation("Message processed successfully.");
+                }
+                catch (Exception ex)
+                {
+                    var retry = 0;
+
+                    if (!_queueConfiguration.CreateRetryQueue)
+                    {
+                        _logger.LogError(ex, "Error message");
+                        channel.BasicNack(basicGetResult.DeliveryTag, false, false);
+                        return;
+                    }
+
+                    if (basicGetResult.BasicProperties.Headers.TryGetValue(RETRY_QUEUE_HEADER, out var retryString))
+                    {
+                        _ = int.TryParse(retryString.ToString(), out retry);
+                        basicGetResult.BasicProperties.Headers.Remove(RETRY_QUEUE_HEADER);
+                    }
+
+                    retry++;
+
+                    basicGetResult.BasicProperties.Headers.Add(RETRY_QUEUE_HEADER, retry);
+
+                    _logger.LogError(ex, "Retry message error");
+
+                    channel.BasicPublish(exchange: _queueConfiguration.ExchangeName,
+                                        routingKey: $"{_queueConfiguration.QueueName}{QueueConstraints.PATH_RETRY}",
+                                        basicProperties: basicGetResult.BasicProperties,
+                                        body: basicGetResult.Body);
+
+                    channel.BasicAck(basicGetResult.DeliveryTag, false);
+                }
             }
         }
     }

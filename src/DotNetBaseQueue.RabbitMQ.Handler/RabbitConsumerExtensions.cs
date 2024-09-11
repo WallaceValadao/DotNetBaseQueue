@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using DotNetBaseQueue.RabbitMQ.HostService;
-using System.Linq;
 using DotNetBaseQueue.Interfaces.Event;
 using DotNetBaseQueue.Interfaces.Configs;
 using DotNetBaseQueue.RabbitMQ.Handler.Consumir;
@@ -80,14 +79,6 @@ namespace DotNetBaseQueue.RabbitMQ.Handler
             where IEvent : class, IQueueEventHandler<IEntity>
             where IEntity : class, IQueueEvent
         {
-            if (queueConfiguration.CreateRetryQueue)
-            {
-                var interfaces = typeof(IEntity).GetInterfaces();
-
-                if (!interfaces.Contains(typeof(IQueueEventRetry)))
-                    SubscribeHelper.CreateException("CreateRetryQueue", "CreateRetryQueue = true and IEntity does not have the IQueueEventRetry interface");
-            }
-
             queueConfiguration.ValidateConfig();
 
             rabbitConsumerBuilder.Services.AddScoped<IEvent>();

@@ -116,7 +116,8 @@ Only handler config:
     "NumberOfWorkroles": 1,
     "CreateDeadLetterQueue": true,
     "CreateRetryQueue": true,
-    "SecondsToRetry": 15
+    "SecondsToRetry": 15,
+    "NumberTryRetry": 3
   },
 ```
 
@@ -136,6 +137,7 @@ All:
     "NumberOfWorkroles": 1,
     "CreateDeadLetterQueue": true,
     "CreateRetryQueue": true,
-    "SecondsToRetry": 15
+    "SecondsToRetry": 15,
+    "NumberTryRetry": 3
   },
 ```

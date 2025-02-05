@@ -7,6 +7,6 @@ public class ExampleHandler : IQueueEventHandler<ExampleMessage>
     public Task HandleAsync(ExampleMessage command)
     {
         Console.WriteLine(command.Id);
-        return Task.CompletedTask;
+        throw new Exception("AAA");
     }
 }

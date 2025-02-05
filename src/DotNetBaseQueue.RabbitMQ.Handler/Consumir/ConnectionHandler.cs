@@ -37,11 +37,11 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Consumir
                 if (queueConfiguration.CreateDeadLetterQueue)
                     args = channel.CreateDeadLetterQueue(queueConfiguration.ExchangeName, queueConfiguration.QueueName, deleteQueueDead);
 
-                if (queueConfiguration.CreateRetryQueue)
-                    channel.CreateRetryQueue(queueConfiguration.ExchangeName, queueConfiguration.RoutingKey, queueConfiguration.QueueName, queueConfiguration.SecondsToRetry);
-
                 channel.QueueDeclare(queue: queueConfiguration.QueueName, durable: true, exclusive: false, autoDelete: false, arguments: args);
                 channel.QueueBind(queue: queueConfiguration.QueueName, exchange: queueConfiguration.ExchangeName, routingKey: queueConfiguration.RoutingKey);
+
+                if (queueConfiguration.CreateRetryQueue)
+                    channel.CreateRetryQueue(queueConfiguration.ExchangeName, queueConfiguration.RoutingKey, queueConfiguration.QueueName, queueConfiguration.SecondsToRetry);
 
                 logger.LogInformation("Successfully created channel.");
 
@@ -112,7 +112,6 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Consumir
 
             return connection;
         }
-
 
         public static Dictionary<string, object> GetProperties(QueueConfiguration queueConfiguration, ILogger logger, out string nameMachine)
         {

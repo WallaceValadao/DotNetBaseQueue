@@ -58,23 +58,29 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Extensions
 
         public static void CreateRetryQueue(this IModel channel, string letterExchange, string letterRoutingKey, string letterQueue, int secondsToRetry = 2)
         {
-            string deadLetterExchange = letterExchange;
-            string deadLetterRoutingKey = $"{letterQueue}{QueueConstraints.PATH_RETRY}";
-            string deadLetterQueue = $"{letterQueue}{QueueConstraints.PATH_RETRY}";
+            var retryLetterExchange = letterExchange;
+            var retryLetterRoutingKey = $"{letterQueue}{QueueConstraints.PATH_RETRY}";
+            var retryLetterQueue = $"{letterQueue}{QueueConstraints.PATH_RETRY}";
+            var retryRouteKey =  $"{letterQueue}{QueueConstraints.PATH_RETRY_PUB}";
 
-            channel.ExchangeDeclare(deadLetterExchange, QueueConstraints.TYPE, true);
-            channel.QueueDeclare(deadLetterQueue, true, false, false, GetParametersRetry(letterExchange, letterRoutingKey, secondsToRetry));
-            channel.QueueBind(queue: deadLetterQueue,
-                            exchange: deadLetterExchange,
-                            routingKey: deadLetterRoutingKey);
+            channel.ExchangeDeclare(retryLetterExchange, QueueConstraints.TYPE, true);
+            channel.QueueDeclare(retryLetterQueue, true, false, false, GetParametersRetry(letterExchange, letterRoutingKey, secondsToRetry));
+            channel.QueueBind(queue: retryLetterQueue,
+                            exchange: retryLetterExchange,
+                            routingKey: retryLetterRoutingKey);
+
+            if (letterQueue != letterRoutingKey)
+            {
+                channel.QueueBind(queue: letterQueue, exchange: letterExchange, retryRouteKey);
+            }
         }
 
-        private static Dictionary<string, object> GetParametersRetry(string exchange, string routingKey, int delay)
+        private static Dictionary<string, object> GetParametersRetry(string exchange, string retryRouteKey, int delay)
         {
             return new Dictionary<string, object>
             {
                 { QueueConstraints.DEAD_LETTER_EXCHANGE, exchange},
-                { QueueConstraints.DEAD_LETTER_ROUTING, routingKey},
+                { QueueConstraints.DEAD_LETTER_ROUTING, retryRouteKey},
                 { QueueConstraints.MESSAGE_DELAY, delay * 1000 }
             };
         }

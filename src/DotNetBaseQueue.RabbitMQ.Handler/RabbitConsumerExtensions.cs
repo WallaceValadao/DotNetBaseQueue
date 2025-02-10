@@ -7,19 +7,31 @@ using DotNetBaseQueue.RabbitMQ.Handler.Consumir;
 using DotNetBaseQueue.RabbitMQ.Interfaces;
 using DotNetBaseQueue.RabbitMQ.Handler.Extensions;
 using DotNetBaseQueue.QueueMQ.HostService;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace DotNetBaseQueue.RabbitMQ.Handler
 {
     public static class RabbitConsumerExtensions
     {
-        public static RabbitConsumerBuilder AddWorkerConfiguration(this IServiceCollection services, IConfiguration configuration, string configSectionRabbitMQ = "QueueConfiguration")
+        public static RabbitConsumerBuilder AddWorkerConfiguration(this IHostApplicationBuilder app, IConfiguration configuration, string configSectionRabbitMQ = "QueueConfiguration", bool useLogger = true)
         {
-            return new RabbitConsumerBuilder(services, configuration, configSectionRabbitMQ);
+            app.AddLog(useLogger);
+            return new RabbitConsumerBuilder(app.Services, configuration, configSectionRabbitMQ);
         }
 
-        public static RabbitConsumerBuilder AddWorkerConfiguration(this IServiceCollection services, IConfiguration configuration, QueueHostConfiguration QueueConfiguration)
+        public static RabbitConsumerBuilder AddWorkerConfiguration(this IHostApplicationBuilder app, IConfiguration configuration, QueueHostConfiguration QueueConfiguration, bool useLogger = true)
         {
-            return new RabbitConsumerBuilder(services, configuration, QueueConfiguration);
+            app.AddLog(useLogger);
+            return new RabbitConsumerBuilder(app.Services, configuration, QueueConfiguration);
+        }
+
+        private static void AddLog(this IHostApplicationBuilder app, bool useLogger)
+        {
+            if (!useLogger)
+                return;
+            app.Services.AddSingleton(typeof(ILogger<>), typeof(CorrelationIdLogger<>));
+            app.Services.AddScoped<ICorrelationIdService, CorrelationIdService>();
         }
 
         public static RabbitConsumerBuilder AddHandler<IEvent, IEntity>(

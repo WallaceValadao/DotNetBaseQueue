@@ -13,6 +13,7 @@ using DotNetBaseQueue.RabbitMQ.HostService;
 using RabbitMQ.Client.Events;
 using RabbitMQ.Client;
 using DotNetBaseQueue.RabbitMQ.Core;
+using DotNetBaseQueue.RabbitMQ.Handler;
 
 namespace DotNetBaseQueue.QueueMQ.HostService
 {
@@ -92,62 +93,67 @@ namespace DotNetBaseQueue.QueueMQ.HostService
 
         private async Task ProcessMessageAsync(IModel channel, BasicDeliverEventArgs basicGetResult)
         {
+            var transactionId = Guid.NewGuid().ToString().Replace("-", string.Empty);
             _logger.LogInformation("Message received! starting processing.");
 
-            using (var scope = _serviceProvider.CreateScope())
+            using var scope = _serviceProvider.CreateScope();
+
+            var loggerScope = scope.ServiceProvider.GetService<ILogger<IEvent>>();
+            var correlationIdService = scope.ServiceProvider.GetService<ICorrelationIdService>();
+            using var dLog = loggerScope.BeginScope(correlationIdService.Get());
+            loggerScope.LogInformation("Starting processing message.");
+
+            var commandHandler = scope.ServiceProvider.GetService<IEvent>();
+
+            try
             {
-                var commandHandler = scope.ServiceProvider.GetService<IEvent>();
+                var entidade = basicGetResult.GetEntityQueue<IEntidade>(channel);
 
-                try
+                await commandHandler.HandleAsync(entidade);
+
+                channel.BasicAck(deliveryTag: basicGetResult.DeliveryTag, multiple: false);
+
+                loggerScope.LogInformation("Message processed successfully.");
+            }
+            catch (Exception ex)
+            {
+                var retry = 0;
+
+                if (!_queueConfiguration.CreateRetryQueue)
                 {
-                    var entidade = basicGetResult.GetEntityQueue<IEntidade>(channel);
-
-                    await commandHandler.HandleAsync(entidade);
-
-                    channel.BasicAck(deliveryTag: basicGetResult.DeliveryTag, multiple: false);
-
-                    _logger.LogInformation("Message processed successfully.");
+                    loggerScope.LogError(ex, "Error message");
+                    channel.BasicNack(basicGetResult.DeliveryTag, false, false);
+                    return;
                 }
-                catch (Exception ex)
+
+                if (basicGetResult.BasicProperties.Headers == null)
+                    basicGetResult.BasicProperties.Headers = new Dictionary<string, object>();
+
+                if (basicGetResult.BasicProperties.Headers.TryGetValue(RETRY_QUEUE_HEADER, out var retryString))
                 {
-                    var retry = 0;
-
-                    if (!_queueConfiguration.CreateRetryQueue)
-                    {
-                        _logger.LogError(ex, "Error message");
-                        channel.BasicNack(basicGetResult.DeliveryTag, false, false);
-                        return;
-                    }
-
-                    if (basicGetResult.BasicProperties.Headers == null)
-                        basicGetResult.BasicProperties.Headers = new Dictionary<string, object>();
-
-                    if (basicGetResult.BasicProperties.Headers.TryGetValue(RETRY_QUEUE_HEADER, out var retryString))
-                    {
-                        _ = int.TryParse(retryString.ToString(), out retry);
-                        basicGetResult.BasicProperties.Headers.Remove(RETRY_QUEUE_HEADER);
-                    }
-
-                    if (retry >= _queueConfiguration.NumberTryRetry)
-                    {
-                        _logger.LogError(ex, "Error: num max retry.");
-                        channel.BasicNack(basicGetResult.DeliveryTag, false, false);
-                        return;
-                    }
-
-                    retry++;
-
-                    basicGetResult.BasicProperties.Headers.Add(RETRY_QUEUE_HEADER, retry);
-
-                    _logger.LogError(ex, "Retry message error");
-
-                    channel.BasicPublish(exchange: _queueConfiguration.ExchangeName,
-                                        routingKey: $"{_queueConfiguration.QueueName}{QueueConstraints.PATH_RETRY}",
-                                        basicProperties: basicGetResult.BasicProperties,
-                                        body: basicGetResult.Body);
-
-                    channel.BasicAck(basicGetResult.DeliveryTag, false);
+                    _ = int.TryParse(retryString.ToString(), out retry);
+                    basicGetResult.BasicProperties.Headers.Remove(RETRY_QUEUE_HEADER);
                 }
+
+                if (retry >= _queueConfiguration.NumberTryRetry)
+                {
+                    loggerScope.LogError(ex, "Error: num max retry.");
+                    channel.BasicNack(basicGetResult.DeliveryTag, false, false);
+                    return;
+                }
+
+                retry++;
+
+                basicGetResult.BasicProperties.Headers.Add(RETRY_QUEUE_HEADER, retry);
+
+                loggerScope.LogError(ex, "Retry message error");
+
+                channel.BasicPublish(exchange: _queueConfiguration.ExchangeName,
+                                    routingKey: $"{_queueConfiguration.QueueName}{QueueConstraints.PATH_RETRY}",
+                                    basicProperties: basicGetResult.BasicProperties,
+                                    body: basicGetResult.Body);
+
+                channel.BasicAck(basicGetResult.DeliveryTag, false);
             }
         }
     }

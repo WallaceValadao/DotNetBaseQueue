@@ -52,7 +52,7 @@ namespace DotNetBaseQueue.RabbitMQ.Publicar.Implementation
             }
             catch (Exception ex)
             {
-                _logger.LogError("Error opening connection with rabbit", ex);
+                _logger.LogError(ex, "Error opening connection with rabbit");
 
                 throw;
             }

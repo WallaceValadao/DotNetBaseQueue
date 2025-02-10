@@ -18,7 +18,7 @@
     <NoWarn>$(NoWarn);1591</NoWarn>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <SignAssembly>true</SignAssembly>
-    <TargetFrameworks>netstandard2.0;net5.0;net6.0;net7.0;net8.0;net9.0</TargetFrameworks>
+    <TargetFrameworks>net5.0;net6.0;net7.0;net8.0;net9.0</TargetFrameworks>
   </PropertyGroup>
   <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">
     <EnableAotAnalyzer>true</EnableAotAnalyzer>
@@ -26,8 +26,8 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="[9.0.1,)" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="[9.0.1,)" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Configuration" Version="[9.0.1,)" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="[9.0.1,)" />
-    <PackageReference Include="DotNetBaseQueue.RabbitMQ.Core" Version="[1.0.5,)" />
+    <PackageReference Include="DotNetBaseQueue.RabbitMQ.Core" Version="[9.0.0,)" />
   </ItemGroup>
 </Project>

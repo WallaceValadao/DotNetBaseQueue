@@ -64,7 +64,7 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Extensions
             var retryRouteKey =  $"{letterQueue}{QueueConstraints.PATH_RETRY_PUB}";
 
             channel.ExchangeDeclare(retryLetterExchange, QueueConstraints.TYPE, true);
-            channel.QueueDeclare(retryLetterQueue, true, false, false, GetParametersRetry(letterExchange, letterRoutingKey, secondsToRetry));
+            channel.QueueDeclare(retryLetterQueue, true, false, false, GetParametersRetry(letterExchange, retryRouteKey, secondsToRetry));
             channel.QueueBind(queue: retryLetterQueue,
                             exchange: retryLetterExchange,
                             routingKey: retryLetterRoutingKey);

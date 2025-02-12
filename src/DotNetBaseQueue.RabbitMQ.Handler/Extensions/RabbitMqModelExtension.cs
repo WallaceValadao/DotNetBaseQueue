@@ -61,18 +61,14 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Extensions
             var retryLetterExchange = letterExchange;
             var retryLetterRoutingKey = $"{letterQueue}{QueueConstraints.PATH_RETRY}";
             var retryLetterQueue = $"{letterQueue}{QueueConstraints.PATH_RETRY}";
-            var retryRouteKey =  $"{letterQueue}{QueueConstraints.PATH_RETRY_PUB}";
+            var retryRouteKey = $"{letterQueue}{QueueConstraints.PATH_RETRY_PUB}";
 
             channel.ExchangeDeclare(retryLetterExchange, QueueConstraints.TYPE, true);
             channel.QueueDeclare(retryLetterQueue, true, false, false, GetParametersRetry(letterExchange, retryRouteKey, secondsToRetry));
             channel.QueueBind(queue: retryLetterQueue,
                             exchange: retryLetterExchange,
                             routingKey: retryLetterRoutingKey);
-
-            if (letterQueue != letterRoutingKey)
-            {
-                channel.QueueBind(queue: letterQueue, exchange: letterExchange, retryRouteKey);
-            }
+            channel.QueueBind(queue: letterQueue, exchange: letterExchange, retryRouteKey);
         }
 
         private static Dictionary<string, object> GetParametersRetry(string exchange, string retryRouteKey, int delay)

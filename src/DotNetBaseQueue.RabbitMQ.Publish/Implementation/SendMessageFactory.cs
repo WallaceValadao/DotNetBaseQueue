@@ -5,6 +5,7 @@ using System.Linq;
 using DotNetBaseQueue.Interfaces.Configs;
 using DotNetBaseQueue.RabbitMQ.Core;
 using DotNetBaseQueue.RabbitMQ.Publicar.Interfaces;
+using DotNetBaseQueue.Interfaces.Logs;
 
 namespace DotNetBaseQueue.RabbitMQ.Publicar.Implementation
 {
@@ -12,11 +13,13 @@ namespace DotNetBaseQueue.RabbitMQ.Publicar.Implementation
     {
         private readonly IRabbitMqConnectionFactory _rabbitMqConexaoFactory;
         private readonly ILogger<SendMessageFactory> _logger;
+        private readonly ICorrelationIdService _correlationIdService;
 
-        public SendMessageFactory(IRabbitMqConnectionFactory rabbitMqConexaoFactory, ILogger<SendMessageFactory> logger)
+        public SendMessageFactory(IRabbitMqConnectionFactory rabbitMqConexaoFactory, ILogger<SendMessageFactory> logger, ICorrelationIdService correlationIdService)
         {
             _rabbitMqConexaoFactory = rabbitMqConexaoFactory;
             _logger = logger;
+            _correlationIdService = correlationIdService;
         }
 
         public void Publish<T>(QueueHostConfiguration configuration, T entity = default, string exchangeName = "", string routingKey = "", bool mandatory = false)
@@ -32,7 +35,7 @@ namespace DotNetBaseQueue.RabbitMQ.Publicar.Implementation
 
                 var body = entity.GetMessage();
 
-                conexao.Publish(exchangeName, routingKey, mandatory, body);
+                conexao.Publish(exchangeName, routingKey, mandatory, body, _correlationIdService.Get());
             }
             catch (Exception ex)
             {
@@ -59,7 +62,7 @@ namespace DotNetBaseQueue.RabbitMQ.Publicar.Implementation
 
                 var bodies = entities.Select(x => x.GetMessage()).ToArray();
 
-                conexao.Publish(exchangeName, routingKey, mandatory, bodies);
+                conexao.Publish(exchangeName, routingKey, mandatory, bodies, _correlationIdService.Get());
             }
             catch (Exception ex)
             {

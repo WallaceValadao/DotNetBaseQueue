@@ -9,6 +9,8 @@ using DotNetBaseQueue.RabbitMQ.Handler.Extensions;
 using DotNetBaseQueue.QueueMQ.HostService;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using DotNetBaseQueue.RabbitMQ.Core.Logs;
+using DotNetBaseQueue.Interfaces.Logs;
 
 namespace DotNetBaseQueue.RabbitMQ.Handler
 {
@@ -32,6 +34,9 @@ namespace DotNetBaseQueue.RabbitMQ.Handler
                 return;
             app.Services.AddSingleton(typeof(ILogger<>), typeof(CorrelationIdLogger<>));
             app.Services.AddScoped<ICorrelationIdService, CorrelationIdService>();
+
+            app.Services.AddApplicationInsightsTelemetryWorkerService();
+            app.Logging.AddApplicationInsights();
         }
 
         public static RabbitConsumerBuilder AddHandler<IEvent, IEntity>(

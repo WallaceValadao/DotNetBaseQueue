@@ -14,6 +14,10 @@ using RabbitMQ.Client.Events;
 using RabbitMQ.Client;
 using DotNetBaseQueue.RabbitMQ.Core;
 using DotNetBaseQueue.RabbitMQ.Handler;
+using System.Diagnostics;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.DataContracts;
+using DotNetBaseQueue.Interfaces.Logs;
 
 namespace DotNetBaseQueue.QueueMQ.HostService
 {
@@ -81,7 +85,7 @@ namespace DotNetBaseQueue.QueueMQ.HostService
 
                 do
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(10));
+                    await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
                 }
                 while (consumer.IsRunning);
 
@@ -93,14 +97,29 @@ namespace DotNetBaseQueue.QueueMQ.HostService
 
         private async Task ProcessMessageAsync(IModel channel, BasicDeliverEventArgs basicGetResult)
         {
-            var transactionId = Guid.NewGuid().ToString().Replace("-", string.Empty);
             _logger.LogInformation("Message received! starting processing.");
+            ValidHeader(basicGetResult);
 
             using var scope = _serviceProvider.CreateScope();
 
             var loggerScope = scope.ServiceProvider.GetService<ILogger<IEvent>>();
             var correlationIdService = scope.ServiceProvider.GetService<ICorrelationIdService>();
+            var telemetryClient = scope.ServiceProvider.GetService<TelemetryClient>();
+
+            try
+            {
+                if (basicGetResult.BasicProperties.Headers.TryGetValue(QueueConstraints.CORRELATION_ID_HEADER, out var correlationIdHeader))
+                {
+                    correlationIdService.Set(System.Text.Encoding.Default.GetString((byte[])correlationIdHeader));
+                }
+            }
+            catch (Exception ex)
+            {
+                loggerScope.LogError(ex, "Error get correlation id header message.");
+            }
             using var dLog = loggerScope.BeginScope(correlationIdService.Get());
+
+            using var telemetry = telemetryClient.StartOperation<RequestTelemetry>(_queueConfiguration.QueueName);
             loggerScope.LogInformation("Starting processing message.");
 
             var commandHandler = scope.ServiceProvider.GetService<IEvent>();
@@ -118,16 +137,12 @@ namespace DotNetBaseQueue.QueueMQ.HostService
             catch (Exception ex)
             {
                 var retry = 0;
-
                 if (!_queueConfiguration.CreateRetryQueue)
                 {
                     loggerScope.LogError(ex, "Error message");
                     channel.BasicNack(basicGetResult.DeliveryTag, false, false);
                     return;
                 }
-
-                if (basicGetResult.BasicProperties.Headers == null)
-                    basicGetResult.BasicProperties.Headers = new Dictionary<string, object>();
 
                 if (basicGetResult.BasicProperties.Headers.TryGetValue(RETRY_QUEUE_HEADER, out var retryString))
                 {
@@ -155,6 +170,16 @@ namespace DotNetBaseQueue.QueueMQ.HostService
 
                 channel.BasicAck(basicGetResult.DeliveryTag, false);
             }
+            finally
+            {
+                telemetryClient.StopOperation(telemetry);
+            }
+        }
+
+        private static void ValidHeader(BasicDeliverEventArgs basicGetResult)
+        {
+            if (basicGetResult.BasicProperties.Headers == null)
+                basicGetResult.BasicProperties.Headers = new Dictionary<string, object>();
         }
     }
 }

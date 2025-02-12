@@ -1,10 +1,11 @@
 using System;
+using DotNetBaseQueue.Interfaces.Logs;
 
-namespace DotNetBaseQueue.RabbitMQ.Handler
+namespace DotNetBaseQueue.RabbitMQ.Core.Logs
 {
     public class CorrelationIdService : ICorrelationIdService
     {
-        private readonly string correlationId;
+        private string correlationId;
 
         public CorrelationIdService()
         {
@@ -14,6 +15,11 @@ namespace DotNetBaseQueue.RabbitMQ.Handler
         public string Get()
         {
             return correlationId;
+        }
+
+        public void Set(string correlationId)
+        {
+            this.correlationId = correlationId.Replace("-", string.Empty);;
         }
     }
 }

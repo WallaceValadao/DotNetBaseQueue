@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.ApplicationInsights;
 
 namespace DotNetBaseQueue.RabbitMQ.HostService
 {
@@ -13,14 +14,17 @@ namespace DotNetBaseQueue.RabbitMQ.HostService
         private readonly IEnumerable<IConsumerHandler> _consumerHandlers;
         private readonly ILogger<ConsumerHostedService> _logger;
         private readonly IHostApplicationLifetime _hostApplicationLifetime;
+        private readonly TelemetryClient _telemetryClient;
 
         public ConsumerHostedService(IEnumerable<IConsumerHandler> commandHandler,
                                     IHostApplicationLifetime hostApplicationLifetime,   
+                                    TelemetryClient telemetryClient,
                                     ILogger<ConsumerHostedService> logger)
         {
             _consumerHandlers = commandHandler;
             _hostApplicationLifetime = hostApplicationLifetime;
             _logger = logger;
+            _telemetryClient = telemetryClient;
         }
 
         public override Task StartAsync(CancellationToken cancellationToken)
@@ -37,11 +41,12 @@ namespace DotNetBaseQueue.RabbitMQ.HostService
             return Task.WhenAll(tasks);
         }
 
-        public override Task StopAsync(CancellationToken cancellationToken)
+        public override async Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("Finishing consumer from the queue.");
             _hostApplicationLifetime.StopApplication();
-            return base.StopAsync(cancellationToken);
+            await _telemetryClient.FlushAsync(cancellationToken);
+            await base.StopAsync(cancellationToken);
         }
     }
 }

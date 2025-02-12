@@ -1,19 +1,15 @@
 using System;
 using System.Collections.Generic;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace DotNetBaseQueue.RabbitMQ.Handler
+namespace DotNetBaseQueue.RabbitMQ.Core.Logs
 {
     public class CorrelationIdLogger<T> : ILogger<T>
     {
         private readonly ILogger _logger;
-        private readonly IServiceProvider serviceProvider;
 
         public CorrelationIdLogger(IServiceProvider serviceProvider, ILoggerProvider loggerProvider)
         {
-            this.serviceProvider = serviceProvider;
-
             _logger = loggerProvider.CreateLogger(nameof(T));
         }
 

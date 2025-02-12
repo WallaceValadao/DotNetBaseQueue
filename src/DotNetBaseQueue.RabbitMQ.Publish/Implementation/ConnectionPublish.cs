@@ -2,6 +2,7 @@
 using DotNetBaseQueue.Interfaces.Configs;
 using DotNetBaseQueue.RabbitMQ.Core;
 using DotNetBaseQueue.RabbitMQ.Publicar.Interfaces;
+using System.Collections.Generic;
 
 namespace DotNetBaseQueue.RabbitMQ.Publicar.Implementation
 {
@@ -32,16 +33,27 @@ namespace DotNetBaseQueue.RabbitMQ.Publicar.Implementation
             connection.Close();
         }
 
-        public void Publish(string exchangeName, string routingKey, bool mandatory, byte[] body)
+        public void Publish(string exchangeName, string routingKey, bool mandatory, byte[] body, string correlationId)
         {
-            var properties = Channel.GetHabbitMqProperties();
+            var properties = GetHabbitMqProperties(correlationId);
 
             Channel.BasicPublish(exchangeName, routingKey, mandatory, properties, body);
         }
 
-        public void Publish(string exchangeName, string routingKey, bool mandatory, byte[][] bodies)
+        private IBasicProperties GetHabbitMqProperties(string correlationId)
         {
             var properties = Channel.GetHabbitMqProperties();
+
+            properties.Headers ??= new Dictionary<string, object>();
+
+            properties.Headers.Add(QueueConstraints.CORRELATION_ID_HEADER, correlationId);
+
+            return properties;
+        }
+
+        public void Publish(string exchangeName, string routingKey, bool mandatory, byte[][] bodies, string correlationId)
+        {
+            var properties = GetHabbitMqProperties(correlationId);
 
             var batch = Channel.CreateBasicPublishBatch();
 

@@ -11,5 +11,7 @@
         public const string PATH_DEAD = "-dead";
         public const string PATH_RETRY = "-retry";
         public const string TYPE = "direct";
+
+        public const string CORRELATION_ID_HEADER = "crtid";
     }
 }

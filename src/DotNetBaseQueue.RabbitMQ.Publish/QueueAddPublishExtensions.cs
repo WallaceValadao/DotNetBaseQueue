@@ -5,6 +5,8 @@ using DotNetBaseQueue.Interfaces.Configs;
 using DotNetBaseQueue.RabbitMQ.Publicar.Implementation;
 using DotNetBaseQueue.RabbitMQ.Publicar.Interfaces;
 using DotNetBaseQueue.QueueMQ.Publish;
+using DotNetBaseQueue.Interfaces.Logs;
+using DotNetBaseQueue.RabbitMQ.Core.Logs;
 
 namespace DotNetBaseQueue.RabbitMQ.Publish
 {
@@ -28,6 +30,8 @@ namespace DotNetBaseQueue.RabbitMQ.Publish
 
             services.AddSingleton(queueMQConfiguration);
             services.AddSingleton<IQueuePublish, QueuePublish>();
+
+            services.AddScoped<ICorrelationIdService, CorrelationIdService>();
         }
     }
 }

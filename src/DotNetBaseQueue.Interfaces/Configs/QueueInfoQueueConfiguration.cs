@@ -2,7 +2,7 @@ namespace DotNetBaseQueue.Interfaces.Configs
 {
     public class QueueInfoQueueConfiguration : QueueInfoQueuePublishConfiguration
     {
-        public string ExchangeType { get; set; }
+        public string ExchangeType { get; set; } = "direct";
         public string QueueName { get; set; }
         
         public bool CreateDeadLetterQueue { get; set; } = true;

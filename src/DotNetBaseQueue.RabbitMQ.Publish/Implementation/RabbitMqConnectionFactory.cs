@@ -3,6 +3,7 @@ using System;
 using System.Collections.Concurrent;
 using DotNetBaseQueue.Interfaces.Configs;
 using DotNetBaseQueue.RabbitMQ.Publicar.Interfaces;
+using System.Threading.Tasks;
 
 namespace DotNetBaseQueue.RabbitMQ.Publicar.Implementation
 {
@@ -17,7 +18,7 @@ namespace DotNetBaseQueue.RabbitMQ.Publicar.Implementation
             this.connections = new ConcurrentDictionary<string, IConnectionPublish>();
         }
 
-        public IConnectionPublish GetConnection(QueueHostConfiguration queueHostConfiguration, string exchangeName, string routingKey, bool reconect = false)
+        public async Task<IConnectionPublish> GetConnectionAsync(QueueHostConfiguration queueHostConfiguration, string exchangeName, string routingKey, bool reconect = false)
         {
             var name = $"{queueHostConfiguration.HostName}-{queueHostConfiguration.Port}-{queueHostConfiguration.UserName}-{exchangeName}-{routingKey}";
             if (!connections.TryGetValue(name, out var connection))
@@ -30,14 +31,14 @@ namespace DotNetBaseQueue.RabbitMQ.Publicar.Implementation
 
             try
             {
-                connection.Dispose();
+                await connection.DisposeAsync();
             }
             finally
             {
                 connections.TryRemove(name, out var _);
             }
 
-            return GetConnection(queueHostConfiguration, exchangeName, routingKey);
+            return await GetConnectionAsync(queueHostConfiguration, exchangeName, routingKey);
         }
 
         private IConnectionPublish CreateConnection(QueueHostConfiguration queueHostConfiguration, string name)

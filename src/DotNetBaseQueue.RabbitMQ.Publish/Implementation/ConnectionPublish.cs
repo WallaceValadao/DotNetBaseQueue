@@ -3,14 +3,17 @@ using DotNetBaseQueue.Interfaces.Configs;
 using DotNetBaseQueue.RabbitMQ.Core;
 using DotNetBaseQueue.RabbitMQ.Publicar.Interfaces;
 using System.Collections.Generic;
+using System;
+using System.Threading.Tasks;
 
 namespace DotNetBaseQueue.RabbitMQ.Publicar.Implementation
 {
-    public class ConnectionPublish : IConnectionPublish
+    public class ConnectionPublish : IConnectionPublish, IAsyncDisposable
     {
         public readonly ConnectionFactory connectionFactory;
-        public readonly IConnection connection;
-        public IModel Channel { get; private set; }
+
+        public IConnection connection;
+        public IChannel channel { get; private set; }
 
         internal ConnectionPublish(QueueHostConfiguration queueHostConfiguration)
         {
@@ -22,45 +25,43 @@ namespace DotNetBaseQueue.RabbitMQ.Publicar.Implementation
                 Password = queueHostConfiguration.Password,
                 VirtualHost = queueHostConfiguration.VirtualHost
             };
-
-            connection = connectionFactory.CreateConnection();
-            Channel = connection.CreateModel();
         }
 
-        public void Dispose()
+        private async Task<IChannel> ChannelAsync()
         {
-            Channel.Close();
-            connection.Close();
+            if (channel != null)
+                return channel;
+
+            connection = await connectionFactory.CreateConnectionAsync();
+            channel = await connection.CreateChannelAsync();
+
+            return channel;
         }
 
-        public void Publish(string exchangeName, string routingKey, bool mandatory, byte[] body, string correlationId)
+        public async Task PublishAsync(string exchangeName, string routingKey, bool mandatory, byte[] body, string correlationId, bool persistent)
         {
-            var properties = GetHabbitMqProperties(correlationId);
+            var properties = MessageHelper.GetHabbitMqProperties(correlationId, persistent);
 
-            Channel.BasicPublish(exchangeName, routingKey, mandatory, properties, body);
+            var Channel = await ChannelAsync();
+            await Channel.BasicPublishAsync(exchangeName, routingKey, mandatory, properties, body);
         }
 
-        private IBasicProperties GetHabbitMqProperties(string correlationId)
+        
+
+        public async Task PublishAsync(string exchangeName, string routingKey, bool mandatory, byte[][] bodies, string correlationId, bool persistent)
         {
-            var properties = Channel.GetHabbitMqProperties();
+            var properties = MessageHelper.GetHabbitMqProperties(correlationId, persistent);
 
-            properties.Headers ??= new Dictionary<string, object>();
-
-            properties.Headers.Add(QueueConstraints.CORRELATION_ID_HEADER, correlationId);
-
-            return properties;
-        }
-
-        public void Publish(string exchangeName, string routingKey, bool mandatory, byte[][] bodies, string correlationId)
-        {
-            var properties = GetHabbitMqProperties(correlationId);
-
-            var batch = Channel.CreateBasicPublishBatch();
+            var Channel = await ChannelAsync();
 
             foreach (var body in bodies)
-                batch.Add(exchangeName, routingKey, mandatory, properties, body);
+                await Channel.BasicPublishAsync(exchangeName, routingKey, mandatory, properties, body);
+        }
 
-            batch.Publish();
+        public async ValueTask DisposeAsync()
+        {
+            await channel.CloseAsync();
+            await connection.CloseAsync();
         }
     }
 }

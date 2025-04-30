@@ -1,5 +1,6 @@
 ﻿using RabbitMQ.Client;
 using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
 
@@ -26,12 +27,17 @@ namespace DotNetBaseQueue.RabbitMQ.Core
 
             return body;
         }
-
-        public static IBasicProperties GetHabbitMqProperties(this IModel channel)
+        
+        public static BasicProperties GetHabbitMqProperties(string correlationId, bool persistent)
         {
-            var properties = channel.CreateBasicProperties();
-            //Seta a mensagem como persistente
-            properties.Persistent = true;
+            var properties = new BasicProperties
+            {
+                ContentType = "text/plain",
+                DeliveryMode = persistent ? DeliveryModes.Persistent : DeliveryModes.Transient
+            };
+            properties.Headers ??= new Dictionary<string, object>();
+
+            properties.Headers.Add(QueueConstraints.CORRELATION_ID_HEADER, correlationId);
 
             return properties;
         }

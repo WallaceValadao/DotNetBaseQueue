@@ -3,24 +3,25 @@ using DotNetBaseQueue.RabbitMQ.Core;
 using DotNetBaseQueue.RabbitMQ.Consumir.Exceptions;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace DotNetBaseQueue.RabbitMQ.Handler.Extensions
 {
     internal static class RabbitMqModelExtension
     {
-        public static Dictionary<string, object> CreateDeadLetterQueue(this IModel channel, string letterExchange, string letterQueue, bool deleteQueue)
+        public static async Task<Dictionary<string, object>> CreateDeadLetterQueueAsync(this IChannel channel, string letterExchange, string letterQueue, bool deleteQueue)
         {
             string deadLetterExchange = letterExchange;
             string deadLetterRoutingKey = $"{letterQueue}{QueueConstraints.PATH_DEAD}";
             string deadLetterQueue = $"{letterQueue}{QueueConstraints.PATH_DEAD}";
 
             if (deleteQueue)
-                DeleteQueue(channel, deadLetterQueue);
+                await DeleteQueueAsync(channel, deadLetterQueue);
 
-            channel.ExchangeDeclare(deadLetterExchange, QueueConstraints.TYPE, true);
+            await channel.ExchangeDeclareAsync(deadLetterExchange, QueueConstraints.TYPE, true);
 
-            QueueDeclare(channel, deadLetterQueue);
-            channel.QueueBind(queue: deadLetterQueue,
+            await QueueDeclareAsync(channel, deadLetterQueue);
+            await channel.QueueBindAsync(queue: deadLetterQueue,
                             exchange: deadLetterExchange,
                             routingKey: deadLetterRoutingKey);
 
@@ -31,21 +32,21 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Extensions
             };
         }
 
-        private static void DeleteQueue(IModel channel, string deadLetterQueue)
+        private static async Task DeleteQueueAsync(IChannel channel, string deadLetterQueue)
         {
-            var queuePassive = channel.QueueDeclarePassive(deadLetterQueue);
+            var queuePassive = await channel.QueueDeclarePassiveAsync(deadLetterQueue);
 
             if (queuePassive.MessageCount > 0)
                 throw new QueueDeadInvalidConfigurationException($"Error when recreating queue with messages to process: {deadLetterQueue}");
 
-            channel.QueueDelete(deadLetterQueue);
+            await channel.QueueDeleteAsync(deadLetterQueue);
         }
 
-        private static void QueueDeclare(IModel channel, string deadLetterQueue)
+        private static async Task QueueDeclareAsync(IChannel channel, string deadLetterQueue)
         {
             try
             {
-                channel.QueueDeclare(queue: deadLetterQueue,
+                await channel.QueueDeclareAsync(queue: deadLetterQueue,
                                                  durable: true,
                                                  exclusive: false,
                                                  autoDelete: false);
@@ -56,19 +57,19 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Extensions
             }
         }
 
-        public static void CreateRetryQueue(this IModel channel, string letterExchange, string letterRoutingKey, string letterQueue, int secondsToRetry = 2)
+        public static async Task CreateRetryQueueAsync(this IChannel channel, string letterExchange, string letterRoutingKey, string letterQueue, int secondsToRetry = 2)
         {
             var retryLetterExchange = letterExchange;
             var retryLetterRoutingKey = $"{letterQueue}{QueueConstraints.PATH_RETRY}";
             var retryLetterQueue = $"{letterQueue}{QueueConstraints.PATH_RETRY}";
             var retryRouteKey = $"{letterQueue}{QueueConstraints.PATH_RETRY_PUB}";
 
-            channel.ExchangeDeclare(retryLetterExchange, QueueConstraints.TYPE, true);
-            channel.QueueDeclare(retryLetterQueue, true, false, false, GetParametersRetry(letterExchange, retryRouteKey, secondsToRetry));
-            channel.QueueBind(queue: retryLetterQueue,
+            await channel.ExchangeDeclareAsync(retryLetterExchange, QueueConstraints.TYPE, true);
+            await channel.QueueDeclareAsync(retryLetterQueue, true, false, false, GetParametersRetry(letterExchange, retryRouteKey, secondsToRetry));
+            await channel.QueueBindAsync(queue: retryLetterQueue,
                             exchange: retryLetterExchange,
                             routingKey: retryLetterRoutingKey);
-            channel.QueueBind(queue: letterQueue, exchange: letterExchange, retryRouteKey);
+            await channel.QueueBindAsync(queue: letterQueue, exchange: letterExchange, retryRouteKey);
         }
 
         private static Dictionary<string, object> GetParametersRetry(string exchange, string retryRouteKey, int delay)

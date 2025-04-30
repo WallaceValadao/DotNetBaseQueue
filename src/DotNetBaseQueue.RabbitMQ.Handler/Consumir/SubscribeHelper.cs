@@ -1,17 +1,13 @@
-﻿using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
+﻿using RabbitMQ.Client.Events;
 using DotNetBaseQueue.RabbitMQ.Core;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using DotNetBaseQueue.Interfaces.Configs;
-using DotNetBaseQueue.Interfaces.Event;
 
 namespace DotNetBaseQueue.RabbitMQ.Handler.Consumir
 {
     internal static class SubscribeHelper
     {
-        internal static T GetEntityQueue<T>(this BasicDeliverEventArgs basicDeliverEventArgs, IModel channel)
+        internal static T GetEntityQueue<T>(this BasicDeliverEventArgs basicDeliverEventArgs)
         {
             var entity = basicDeliverEventArgs.Body.GetMessage<T>();
 

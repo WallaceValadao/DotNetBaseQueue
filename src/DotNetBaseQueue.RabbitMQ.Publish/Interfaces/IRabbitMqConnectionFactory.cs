@@ -1,9 +1,10 @@
-﻿using DotNetBaseQueue.Interfaces.Configs;
+﻿using System.Threading.Tasks;
+using DotNetBaseQueue.Interfaces.Configs;
 
 namespace DotNetBaseQueue.RabbitMQ.Publicar.Interfaces
 {
     public interface IRabbitMqConnectionFactory
     {
-        IConnectionPublish GetConnection(QueueHostConfiguration rabbitHostConfiguration, string exchangeName, string routingKey, bool reconect = false);
+        Task<IConnectionPublish> GetConnectionAsync(QueueHostConfiguration rabbitHostConfiguration, string exchangeName, string routingKey, bool reconect = false);
     }
 }

@@ -10,38 +10,40 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using DotNetBaseQueue.Interfaces.Configs;
 using DotNetBaseQueue.RabbitMQ.Handler.Extensions;
+using System.Threading.Tasks;
 
 namespace DotNetBaseQueue.RabbitMQ.Handler.Consumir
 {
     internal static class ConnectionHandler
     {
-        internal static IModel CreateConnection(QueueConfiguration queueConfiguration, ILogger logger)
+        internal static Task<IChannel> CreateConnectionAsync(QueueConfiguration queueConfiguration, ILogger logger)
         {
-            return CreateModel(queueConfiguration, logger);
+            return CreateModelAsync(queueConfiguration, logger);
         }
 
-        internal static IModel CreateModel(QueueConfiguration queueConfiguration, ILogger logger, bool reconnect = false, bool deleteQueueDead = false)
+        internal static async Task<IChannel> CreateModelAsync(QueueConfiguration queueConfiguration, ILogger logger, bool reconnect = false, bool deleteQueueDead = false)
         {
             try
             {
-                var connection = CreateConnection(queueConfiguration, logger, reconnect);
-                var channel = connection.CreateModel();
-                channel.ExchangeDeclare(exchange: queueConfiguration.ExchangeName, type: queueConfiguration.ExchangeType, durable: true);
+                var connection = await CreateConnectionAsync(queueConfiguration, logger, reconnect);
+                var channel = await connection.CreateChannelAsync();
+                await channel.ExchangeDeclareAsync(exchange: queueConfiguration.ExchangeName, type: queueConfiguration.ExchangeType, durable: true);
 
-                channel.ModelShutdown += (sender, ea) =>
+                channel.ChannelShutdownAsync += (sender, ea) =>
                 {
                     logger.LogError($"Channel error: {ea}");
+                    return Task.CompletedTask;
                 };
 
                 Dictionary<string, object> args = null;
                 if (queueConfiguration.CreateDeadLetterQueue)
-                    args = channel.CreateDeadLetterQueue(queueConfiguration.ExchangeName, queueConfiguration.QueueName, deleteQueueDead);
+                    args = await channel.CreateDeadLetterQueueAsync(queueConfiguration.ExchangeName, queueConfiguration.QueueName, deleteQueueDead);
 
-                channel.QueueDeclare(queue: queueConfiguration.QueueName, durable: true, exclusive: false, autoDelete: false, arguments: args);
-                channel.QueueBind(queue: queueConfiguration.QueueName, exchange: queueConfiguration.ExchangeName, routingKey: queueConfiguration.RoutingKey);
+                await channel.QueueDeclareAsync(queue: queueConfiguration.QueueName, durable: true, exclusive: false, autoDelete: false, arguments: args);
+                await channel.QueueBindAsync(queue: queueConfiguration.QueueName, exchange: queueConfiguration.ExchangeName, routingKey: queueConfiguration.RoutingKey);
 
                 if (queueConfiguration.CreateRetryQueue)
-                    channel.CreateRetryQueue(queueConfiguration.ExchangeName, queueConfiguration.RoutingKey, queueConfiguration.QueueName, queueConfiguration.SecondsToRetry);
+                    await channel.CreateRetryQueueAsync(queueConfiguration.ExchangeName, queueConfiguration.RoutingKey, queueConfiguration.QueueName, queueConfiguration.SecondsToRetry);
 
                 logger.LogInformation("Successfully created channel.");
 
@@ -54,20 +56,20 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Consumir
                     
                 logger.LogError(ex, "Invalid configuration in the dead queue. The queue will be updated.");
 
-                return CreateModel(queueConfiguration, logger, reconnect: true, deleteQueueDead: true);
+                return await CreateModelAsync(queueConfiguration, logger, reconnect: true, deleteQueueDead: true);
             }
             catch
             {
                 if (reconnect)
                     throw;
 
-                return CreateModel(queueConfiguration, logger, reconnect: true);
+                return await CreateModelAsync(queueConfiguration, logger, reconnect: true);
             }
         }
 
         private static readonly ConcurrentDictionary<string, IConnection> connections = new ConcurrentDictionary<string, IConnection>();
 
-        private static IConnection CreateConnection(QueueConfiguration queueConfiguration, ILogger logger, bool reconnect)
+        private static async Task<IConnection> CreateConnectionAsync(QueueConfiguration queueConfiguration, ILogger logger, bool reconnect)
         {
             var nome = $"{queueConfiguration.HostName}-{queueConfiguration.Port}-{queueConfiguration.UserName}";
 
@@ -86,7 +88,7 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Consumir
                     logger.LogError(ex, "Error dropping connection");
                 }
 
-                return CreateConnection(queueConfiguration, logger, false);
+                return await CreateConnectionAsync(queueConfiguration, logger, false);
             }
 
             var nameMachine = string.Empty;
@@ -102,10 +104,12 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Consumir
                 ClientProvidedName = nameMachine
             };
 
-            connection = factory.CreateConnection();
-            connection.ConnectionShutdown += (sender, ea) =>
+            connection = await factory.CreateConnectionAsync();
+            connection.ConnectionShutdownAsync += (sender, ea) =>
             {
                 logger.LogError($"Connection error: {ea}");
+
+                return Task.CompletedTask;
             };
 
             connections.TryAdd(nome, connection);

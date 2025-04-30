@@ -6,6 +6,7 @@ using DotNetBaseQueue.Interfaces.Configs;
 using DotNetBaseQueue.RabbitMQ.Core;
 using DotNetBaseQueue.RabbitMQ.Publicar.Interfaces;
 using DotNetBaseQueue.Interfaces.Logs;
+using System.Threading.Tasks;
 
 namespace DotNetBaseQueue.RabbitMQ.Publicar.Implementation
 {
@@ -22,20 +23,20 @@ namespace DotNetBaseQueue.RabbitMQ.Publicar.Implementation
             _correlationIdService = correlationIdService;
         }
 
-        public void Publish<T>(QueueHostConfiguration configuration, T entity = default, string exchangeName = "", string routingKey = "", bool mandatory = false)
+        public Task PublishAsync<T>(QueueHostConfiguration configuration, T entity = default, string exchangeName = "", string routingKey = "", bool mandatory = false, bool persistent = true)
         {
-            Publish(configuration, entity, exchangeName, routingKey, mandatory, false);
+            return PublishAsync(configuration, entity, exchangeName, routingKey, mandatory, persistent, false);
         }
 
-        private void Publish<T>(QueueHostConfiguration configuration, T entity, string exchangeName, string routingKey, bool mandatory, bool reconnect)
+        private async Task PublishAsync<T>(QueueHostConfiguration configuration, T entity, string exchangeName, string routingKey, bool mandatory, bool persistent, bool reconnect)
         {
             try
             {
-                var conexao = _rabbitMqConexaoFactory.GetConnection(configuration, exchangeName, routingKey, reconnect);
+                var conexao = await _rabbitMqConexaoFactory.GetConnectionAsync(configuration, exchangeName, routingKey, reconnect);
 
                 var body = entity.GetMessage();
 
-                conexao.Publish(exchangeName, routingKey, mandatory, body, _correlationIdService.Get());
+                await conexao.PublishAsync(exchangeName, routingKey, mandatory, body, _correlationIdService.Get(), persistent);
             }
             catch (Exception ex)
             {
@@ -45,24 +46,24 @@ namespace DotNetBaseQueue.RabbitMQ.Publicar.Implementation
                     throw;
                 }
 
-                Publish(configuration, entity, exchangeName, routingKey, mandatory, true);
+                await PublishAsync(configuration, entity, exchangeName, routingKey, mandatory, persistent, true);
             }
         }
 
-        public void PublishList<T>(QueueHostConfiguration configuration, IEnumerable<T> entities = default, string exchangeName = "", string routingKey = "", bool mandatory = false)
+        public Task PublishListAsync<T>(QueueHostConfiguration configuration, IEnumerable<T> entities = default, string exchangeName = "", string routingKey = "", bool mandatory = false, bool persistent = true)
         {
-            PublishList(configuration, entities, exchangeName, routingKey, mandatory, false);
+            return PublishListAsync(configuration, entities, exchangeName, routingKey, mandatory, false);
         }
 
-        private void PublishList<T>(QueueHostConfiguration configuration, IEnumerable<T> entities, string exchangeName, string routingKey, bool mandatory, bool reconnect)
+        private async Task PublishListAsync<T>(QueueHostConfiguration configuration, IEnumerable<T> entities, string exchangeName, string routingKey, bool mandatory, bool persistent, bool reconnect)
         {
             try
             {
-                var conexao = _rabbitMqConexaoFactory.GetConnection(configuration, exchangeName, routingKey, reconnect);
+                var conexao = await _rabbitMqConexaoFactory.GetConnectionAsync(configuration, exchangeName, routingKey, reconnect);
 
                 var bodies = entities.Select(x => x.GetMessage()).ToArray();
 
-                conexao.Publish(exchangeName, routingKey, mandatory, bodies, _correlationIdService.Get());
+                await conexao.PublishAsync(exchangeName, routingKey, mandatory, bodies, _correlationIdService.Get(), persistent);
             }
             catch (Exception ex)
             {
@@ -72,7 +73,7 @@ namespace DotNetBaseQueue.RabbitMQ.Publicar.Implementation
                     throw;
                 }
 
-                PublishList(configuration, entities, exchangeName, routingKey, mandatory, true);
+                await PublishListAsync(configuration, entities, exchangeName, routingKey, mandatory, persistent, true);
             }
         }
     }

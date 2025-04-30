@@ -7,6 +7,7 @@ using DotNetBaseQueue.RabbitMQ.Publicar.Interfaces;
 using DotNetBaseQueue.QueueMQ.Publish;
 using DotNetBaseQueue.Interfaces.Logs;
 using DotNetBaseQueue.RabbitMQ.Core.Logs;
+using DotNetBaseQueue.RabbitMQ.Publish.Interfaces;
 
 namespace DotNetBaseQueue.RabbitMQ.Publish
 {
@@ -26,10 +27,11 @@ namespace DotNetBaseQueue.RabbitMQ.Publish
         private static void AddQueuePublish(this IServiceCollection services, QueueHostConfiguration queueMQConfiguration)
         {
             services.AddSingleton<IRabbitMqConnectionFactory, RabbitMqConnectionFactory>();
-            services.AddSingleton<ISendMessageFactory, SendMessageFactory>();
+            services.AddSingleton<IQueueAppConfiguration, QueueAppConfiguration>();
 
             services.AddSingleton(queueMQConfiguration);
-            services.AddSingleton<IQueuePublish, QueuePublish>();
+            services.AddScoped<ISendMessageFactory, SendMessageFactory>();
+            services.AddScoped<IQueuePublish, QueuePublish>();
 
             services.AddScoped<ICorrelationIdService, CorrelationIdService>();
         }

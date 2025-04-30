@@ -1,10 +1,11 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 namespace DotNetBaseQueue.RabbitMQ.Publicar.Interfaces
 {
-    public interface IConnectionPublish : IDisposable
+    public interface IConnectionPublish : IAsyncDisposable
     {
-        void Publish(string exchangeName, string routingKey, bool mandatory, byte[] body, string correlationId);
-        void Publish(string exchangeName, string routingKey, bool mandatory, byte[][] bodies, string correlationId);
+        Task PublishAsync(string exchangeName, string routingKey, bool mandatory, byte[] body, string correlationId, bool persistent);
+        Task PublishAsync(string exchangeName, string routingKey, bool mandatory, byte[][] bodies, string correlationId, bool persistent);
     }
 }

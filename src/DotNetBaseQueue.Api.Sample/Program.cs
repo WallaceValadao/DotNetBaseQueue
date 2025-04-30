@@ -24,9 +24,9 @@ var summaries = new[]
     "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
 };
 
-app.MapGet("/weatherforecast", (IQueuePublish queuePublish) =>
+app.MapGet("/weatherforecast", async (IQueuePublish queuePublish) =>
 {
-    queuePublish.Publish(new ExampleMessage
+    await queuePublish.PublishAsync(new ExampleMessage
     {
         Id = Guid.NewGuid().ToString(),
     }, "ExampleQueueConfiguration");

@@ -11,6 +11,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using DotNetBaseQueue.RabbitMQ.Core.Logs;
 using DotNetBaseQueue.Interfaces.Logs;
+using Microsoft.ApplicationInsights.DependencyCollector;
 
 namespace DotNetBaseQueue.RabbitMQ.Handler
 {
@@ -37,6 +38,11 @@ namespace DotNetBaseQueue.RabbitMQ.Handler
 
             app.Services.AddApplicationInsightsTelemetryWorkerService();
             app.Logging.AddApplicationInsights();
+
+            app.Services.ConfigureTelemetryModule<DependencyTrackingTelemetryModule>((module, o) =>
+            {
+                module.EnableSqlCommandTextInstrumentation = true;
+            });
         }
 
         public static RabbitConsumerBuilder AddHandler<IEvent, IEntity>(

@@ -13,8 +13,6 @@ using DotNetBaseQueue.RabbitMQ.HostService;
 using RabbitMQ.Client.Events;
 using RabbitMQ.Client;
 using DotNetBaseQueue.RabbitMQ.Core;
-using DotNetBaseQueue.RabbitMQ.Handler;
-using System.Diagnostics;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
 using DotNetBaseQueue.Interfaces.Logs;
@@ -68,20 +66,20 @@ namespace DotNetBaseQueue.QueueMQ.HostService
         private async Task QueueConsumerAsync(CancellationToken stoppingToken)
         {
             _logger.LogInformation($"Opening channel and connection with {_queueConfiguration.HostName}.");
-            var channel = ConnectionHandler.CreateConnection(_queueConfiguration, _logger);
-            channel.BasicQos(prefetchSize: 0, prefetchCount: _queueConfiguration.PrefetchCount, global: false);
+            var channel = await ConnectionHandler.CreateConnectionAsync(_queueConfiguration, _logger);
+            await channel.BasicQosAsync(prefetchSize: 0, prefetchCount: _queueConfiguration.PrefetchCount, global: false);
             _logger.LogInformation("Connection started successfully.");
 
             _logger.LogInformation("Starting reading messages.");
 
             while (!stoppingToken.IsCancellationRequested)
             {
-                var consumer = new EventingBasicConsumer(channel);
+                var consumer = new AsyncEventingBasicConsumer(channel);
 
-                consumer.Received += (sender, ea) => ProcessMessageAsync(channel, ea).GetAwaiter().GetResult();
+                consumer.ReceivedAsync += (ch, ea) => ProcessMessageAsync(channel, ea);
 
                 _logger.LogInformation("Starting consumer.");
-                var tagConsummer = channel.BasicConsume(_queueConfiguration.QueueName, false, $"{Environment.MachineName}-{Guid.NewGuid()}", consumer: consumer);
+                var tagConsummer = await channel.BasicConsumeAsync(_queueConfiguration.QueueName, false, $"{Environment.MachineName}-{Guid.NewGuid()}", consumer: consumer);
 
                 do
                 {
@@ -89,16 +87,16 @@ namespace DotNetBaseQueue.QueueMQ.HostService
                 }
                 while (consumer.IsRunning);
 
-                channel.BasicCancel(tagConsummer);
+                await channel.BasicCancelAsync(tagConsummer);
 
                 _logger.LogInformation("Consumer stopped working.");
             }
         }
 
-        private async Task ProcessMessageAsync(IModel channel, BasicDeliverEventArgs basicGetResult)
+        private async Task ProcessMessageAsync(IChannel channel, BasicDeliverEventArgs basicGetResult)
         {
             _logger.LogInformation("Message received! starting processing.");
-            ValidHeader(basicGetResult);
+            var headerMessage = GetValidHeader(basicGetResult);
 
             using var scope = _serviceProvider.CreateScope();
 
@@ -108,7 +106,7 @@ namespace DotNetBaseQueue.QueueMQ.HostService
 
             try
             {
-                if (basicGetResult.BasicProperties.Headers.TryGetValue(QueueConstraints.CORRELATION_ID_HEADER, out var correlationIdHeader))
+                if (headerMessage.TryGetValue(QueueConstraints.CORRELATION_ID_HEADER, out var correlationIdHeader))
                 {
                     correlationIdService.Set(System.Text.Encoding.Default.GetString((byte[])correlationIdHeader));
                 }
@@ -126,11 +124,11 @@ namespace DotNetBaseQueue.QueueMQ.HostService
 
             try
             {
-                var entidade = basicGetResult.GetEntityQueue<IEntidade>(channel);
+                var entidade = basicGetResult.GetEntityQueue<IEntidade>();
 
                 await commandHandler.HandleAsync(entidade);
 
-                channel.BasicAck(deliveryTag: basicGetResult.DeliveryTag, multiple: false);
+                await channel.BasicAckAsync(deliveryTag: basicGetResult.DeliveryTag, multiple: false);
 
                 loggerScope.LogInformation("Message processed successfully.");
             }
@@ -140,35 +138,36 @@ namespace DotNetBaseQueue.QueueMQ.HostService
                 if (!_queueConfiguration.CreateRetryQueue)
                 {
                     loggerScope.LogError(ex, "Error message");
-                    channel.BasicNack(basicGetResult.DeliveryTag, false, false);
+                    await channel.BasicNackAsync(basicGetResult.DeliveryTag, false, false);
                     return;
                 }
 
-                if (basicGetResult.BasicProperties.Headers.TryGetValue(RETRY_QUEUE_HEADER, out var retryString))
+                if (headerMessage.TryGetValue(RETRY_QUEUE_HEADER, out var retryString))
                 {
                     _ = int.TryParse(retryString.ToString(), out retry);
-                    basicGetResult.BasicProperties.Headers.Remove(RETRY_QUEUE_HEADER);
+                    headerMessage.Remove(RETRY_QUEUE_HEADER);
                 }
 
                 if (retry >= _queueConfiguration.NumberTryRetry)
                 {
                     loggerScope.LogError(ex, "Error: num max retry.");
-                    channel.BasicNack(basicGetResult.DeliveryTag, false, false);
+                    await channel.BasicNackAsync(basicGetResult.DeliveryTag, false, false);
                     return;
                 }
 
                 retry++;
-
-                basicGetResult.BasicProperties.Headers.Add(RETRY_QUEUE_HEADER, retry);
+                var newProperties = MessageHelper.GetHabbitMqProperties(correlationIdService.Get(), true);
+                newProperties.Headers.Add(RETRY_QUEUE_HEADER, retry);
 
                 loggerScope.LogError(ex, "Retry message error");
 
-                channel.BasicPublish(exchange: _queueConfiguration.ExchangeName,
+                await channel.BasicPublishAsync<BasicProperties>(exchange: _queueConfiguration.ExchangeName,
                                     routingKey: $"{_queueConfiguration.QueueName}{QueueConstraints.PATH_RETRY}",
-                                    basicProperties: basicGetResult.BasicProperties,
+                                    mandatory: true,
+                                    basicProperties: newProperties,
                                     body: basicGetResult.Body);
 
-                channel.BasicAck(basicGetResult.DeliveryTag, false);
+                await channel.BasicAckAsync(basicGetResult.DeliveryTag, false);
             }
             finally
             {
@@ -176,10 +175,9 @@ namespace DotNetBaseQueue.QueueMQ.HostService
             }
         }
 
-        private static void ValidHeader(BasicDeliverEventArgs basicGetResult)
+        private static new IDictionary<string, object> GetValidHeader(BasicDeliverEventArgs basicGetResult)
         {
-            if (basicGetResult.BasicProperties.Headers == null)
-                basicGetResult.BasicProperties.Headers = new Dictionary<string, object>();
+            return basicGetResult.BasicProperties.Headers ?? new Dictionary<string, object>();
         }
     }
 }

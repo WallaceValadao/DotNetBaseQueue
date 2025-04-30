@@ -2,7 +2,6 @@
 using DotNetBaseQueue.Interfaces.Configs;
 using DotNetBaseQueue.RabbitMQ.Core;
 using DotNetBaseQueue.RabbitMQ.Publicar.Interfaces;
-using System.Collections.Generic;
 using System;
 using System.Threading.Tasks;
 
@@ -46,7 +45,7 @@ namespace DotNetBaseQueue.RabbitMQ.Publicar.Implementation
             await Channel.BasicPublishAsync(exchangeName, routingKey, mandatory, properties, body);
         }
 
-        
+
 
         public async Task PublishAsync(string exchangeName, string routingKey, bool mandatory, byte[][] bodies, string correlationId, bool persistent)
         {
@@ -62,6 +61,8 @@ namespace DotNetBaseQueue.RabbitMQ.Publicar.Implementation
         {
             await channel.CloseAsync();
             await connection.CloseAsync();
+            await channel.DisposeAsync();
+            await connection.DisposeAsync();
         }
     }
 }

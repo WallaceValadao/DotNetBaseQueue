@@ -1,4 +1,5 @@
-﻿using DotNetBaseQueue.Interfaces.Configs;
+﻿using System.Linq;
+using DotNetBaseQueue.Interfaces.Configs;
 
 namespace DotNetBaseQueue.RabbitMQ.Handler.Extensions
 {
@@ -6,7 +7,7 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Extensions
     {
         public static QueueConfiguration Convert(this QueueHostConfiguration queueHostConfiguration, QueueInfoQueueConfiguration queueInfoQueueConfiguration)
         {
-            return new QueueConfiguration
+            var queueConfig = new QueueConfiguration
             {
                 HostName = queueHostConfiguration.HostName,
                 Port = queueHostConfiguration.Port,
@@ -22,6 +23,17 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Extensions
                 SecondsToRetry = queueInfoQueueConfiguration.SecondsToRetry,
                 CreateRetryQueue = queueInfoQueueConfiguration.CreateRetryQueue,
             };
+
+            if (!string.IsNullOrEmpty(queueConfig.QueueName))
+            {
+                if (string.IsNullOrEmpty(queueConfig.RoutingKey))
+                    queueConfig.RoutingKey = queueConfig.QueueName;
+
+                if (string.IsNullOrEmpty(queueConfig.ExchangeName))
+                    queueConfig.ExchangeName = queueConfig.QueueName.Split('.').FirstOrDefault();
+            }
+
+            return queueConfig;
         }
     }
 }

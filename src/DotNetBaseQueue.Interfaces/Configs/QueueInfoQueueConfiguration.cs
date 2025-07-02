@@ -4,6 +4,7 @@ namespace DotNetBaseQueue.Interfaces.Configs
     {
         public string ExchangeType { get; set; } = "direct";
         public string QueueName { get; set; }
+        public string[] RoutingKeys { get; set; }
         
         public bool CreateDeadLetterQueue { get; set; } = true;
         public bool CreateRetryQueue { get; set; } = true;

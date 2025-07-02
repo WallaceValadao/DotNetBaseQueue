@@ -22,6 +22,7 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Extensions
                 CreateDeadLetterQueue = queueInfoQueueConfiguration.CreateDeadLetterQueue,
                 SecondsToRetry = queueInfoQueueConfiguration.SecondsToRetry,
                 CreateRetryQueue = queueInfoQueueConfiguration.CreateRetryQueue,
+                RoutingKeys = queueInfoQueueConfiguration.RoutingKeys
             };
 
             if (!string.IsNullOrEmpty(queueConfig.QueueName))
@@ -31,6 +32,15 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Extensions
 
                 if (string.IsNullOrEmpty(queueConfig.ExchangeName))
                     queueConfig.ExchangeName = queueConfig.QueueName.Split('.').FirstOrDefault();
+            }
+
+            queueConfig.RoutingKeys ??= [];
+            if (queueConfig.RoutingKeys.Contains(queueConfig.RoutingKey))
+            {
+                var routingKeys = queueConfig.RoutingKeys.ToList();
+                routingKeys.Remove(queueConfig.RoutingKey);
+
+                queueConfig.RoutingKeys = [.. routingKeys];
             }
 
             return queueConfig;

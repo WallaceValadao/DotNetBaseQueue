@@ -3,9 +3,9 @@
     <PackageTags>queue dotnet rabbit rabbitMQ</PackageTags>
     <Description>This library aims to facilitate the use of asynchronous processes in .NET projects,
       with an initial focus entirely on RabbitMQ.</Description>
-    <Version>9.0.2</Version>
-    <AssemblyVersion>9.0.2</AssemblyVersion>
-    <FileVersion>9.0.2</FileVersion>
+    <Version>9.2.0</Version>
+    <AssemblyVersion>9.2.0</AssemblyVersion>
+    <FileVersion>9.2.0</FileVersion>
     <Company>WallaceValadao</Company>
     <Authors>WallaceValadao</Authors>
     <PackageProjectUrl>https://github.com/WallaceValadao/DotNetBaseQueue</PackageProjectUrl>
@@ -18,16 +18,19 @@
     <NoWarn>$(NoWarn);1591</NoWarn>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <SignAssembly>true</SignAssembly>
-    <TargetFrameworks>net5.0;net6.0;net7.0;net8.0;net9.0</TargetFrameworks>
+    <TargetFrameworks>net6.0;net7.0;net8.0;net9.0</TargetFrameworks>
   </PropertyGroup>
   <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">
     <EnableAotAnalyzer>true</EnableAotAnalyzer>
     <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
+    <PackageReference Include="RabbitMQ.Client" Version="7.1.2" />
     <PackageReference Include="System.Text.Json" Version="[9.0.1,)" />
-    <PackageReference Include="DotNetBaseQueue.Interfaces" Version="[9.0.2,)" />
+    <!-- <PackageReference Include="DotNetBaseQueue.Interfaces" Version="[9.2.0,)" /> -->
     <PackageReference Include="Microsoft.Extensions.Logging.Configuration" Version="[9.0.1,)" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\DotNetBaseQueue.Interfaces\DotNetBaseQueue.Interfaces.csproj" />
   </ItemGroup>
 </Project>

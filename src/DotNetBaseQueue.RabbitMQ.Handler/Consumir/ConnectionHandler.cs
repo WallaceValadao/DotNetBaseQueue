@@ -31,7 +31,7 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Consumir
 
                 channel.ChannelShutdownAsync += (sender, ea) =>
                 {
-                    logger.LogError($"Channel error: {ea}");
+                    logger.LogError("Channel error: {ea}", ea);
                     return Task.CompletedTask;
                 };
 
@@ -41,6 +41,11 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Consumir
 
                 await channel.QueueDeclareAsync(queue: queueConfiguration.QueueName, durable: true, exclusive: false, autoDelete: false, arguments: args);
                 await channel.QueueBindAsync(queue: queueConfiguration.QueueName, exchange: queueConfiguration.ExchangeName, routingKey: queueConfiguration.RoutingKey);
+
+                foreach (var routeKeyList in queueConfiguration.RoutingKeys)
+                {
+                    await channel.QueueBindAsync(queue: queueConfiguration.QueueName, exchange: queueConfiguration.ExchangeName, routingKey: routeKeyList);
+                }
 
                 if (queueConfiguration.CreateRetryQueue)
                     await channel.CreateRetryQueueAsync(queueConfiguration.ExchangeName, queueConfiguration.RoutingKey, queueConfiguration.QueueName, queueConfiguration.SecondsToRetry);
@@ -53,7 +58,7 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Consumir
             {
                 if (reconnect)
                     throw;
-                    
+
                 logger.LogError(ex, "Invalid configuration in the dead queue. The queue will be updated.");
 
                 return await CreateModelAsync(queueConfiguration, logger, reconnect: true, deleteQueueDead: true);

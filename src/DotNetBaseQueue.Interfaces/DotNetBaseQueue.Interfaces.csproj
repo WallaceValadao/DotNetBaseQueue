@@ -3,9 +3,9 @@
     <PackageTags>queue dotnet rabbit rabbitMQ</PackageTags>
     <Description>This library aims to facilitate the use of asynchronous processes in .NET
 			projects, with an initial focus entirely on RabbitMQ.</Description>
-    <Version>9.1.0</Version>
-    <AssemblyVersion>9.1.0</AssemblyVersion>
-    <FileVersion>9.1.0</FileVersion>
+    <Version>9.2.0</Version>
+    <AssemblyVersion>9.2.0</AssemblyVersion>
+    <FileVersion>9.2.0</FileVersion>
     <Company>WallaceValadao</Company>
     <Authors>WallaceValadao</Authors>
     <PackageProjectUrl>https://github.com/WallaceValadao/DotNetBaseQueue</PackageProjectUrl>
@@ -18,7 +18,7 @@
     <NoWarn>$(NoWarn);1591</NoWarn>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <SignAssembly>true</SignAssembly>
-    <TargetFrameworks>netstandard2.0;netcoreapp3.0;net5.0;net6.0;net7.0;net8.0;net9.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net6.0;net7.0;net8.0;net9.0</TargetFrameworks>
   </PropertyGroup>
   <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">
     <EnableAotAnalyzer>true</EnableAotAnalyzer>

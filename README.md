@@ -138,6 +138,7 @@ All:
     "CreateDeadLetterQueue": true,
     "CreateRetryQueue": true,
     "SecondsToRetry": 15,
-    "NumberTryRetry": 3
+    "NumberTryRetry": 3,
+    "RoutingKeys": [ "" ]
   },
 ```

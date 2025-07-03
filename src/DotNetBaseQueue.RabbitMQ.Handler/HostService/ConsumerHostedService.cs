@@ -9,11 +9,25 @@ using Microsoft.ApplicationInsights;
 
 namespace DotNetBaseQueue.RabbitMQ.HostService
 {
-    public class ConsumerHostedService(IEnumerable<IConsumerHandler> commandHandlers,
+    public class ConsumerHostedService : BackgroundService
+    {
+
+        private readonly IEnumerable<IConsumerHandler> commandHandlers;
+        private readonly IHostApplicationLifetime hostApplicationLifetime;
+        private readonly TelemetryClient telemetryClient;
+        private readonly ILogger<ConsumerHostedService> logger;
+
+        public ConsumerHostedService(IEnumerable<IConsumerHandler> commandHandlers,
                                 IHostApplicationLifetime hostApplicationLifetime,
                                 TelemetryClient telemetryClient,
-                                ILogger<ConsumerHostedService> logger) : BackgroundService
-    {
+                                ILogger<ConsumerHostedService> logger)
+        {
+            this.commandHandlers = commandHandlers;
+            this.hostApplicationLifetime = hostApplicationLifetime;
+            this.telemetryClient = telemetryClient;
+            this.logger = logger;
+        }
+
         public override Task StartAsync(CancellationToken cancellationToken)
         {
             logger.LogInformation("Started consumer in queue.");

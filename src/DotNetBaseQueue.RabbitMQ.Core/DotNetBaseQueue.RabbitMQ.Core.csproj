@@ -27,10 +27,10 @@
   <ItemGroup>
     <PackageReference Include="RabbitMQ.Client" Version="7.1.2" />
     <PackageReference Include="System.Text.Json" Version="[9.0.6,)" />
-    <!-- <PackageReference Include="DotNetBaseQueue.Interfaces" Version="[9.2.0,)" /> -->
+    <PackageReference Include="DotNetBaseQueue.Interfaces" Version="[9.2.0,)" />
     <PackageReference Include="Microsoft.Extensions.Logging.Configuration" Version="[9.0.6,)" />
   </ItemGroup>
-  <ItemGroup>
+  <!-- <ItemGroup>
     <ProjectReference Include="..\DotNetBaseQueue.Interfaces\DotNetBaseQueue.Interfaces.csproj" />
-  </ItemGroup>
+  </ItemGroup> -->
 </Project>

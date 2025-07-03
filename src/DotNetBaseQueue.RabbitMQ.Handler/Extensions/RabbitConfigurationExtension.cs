@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using DotNetBaseQueue.Interfaces.Configs;
 
 namespace DotNetBaseQueue.RabbitMQ.Handler.Extensions
@@ -34,13 +35,15 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Extensions
                     queueConfig.ExchangeName = queueConfig.QueueName.Split('.').FirstOrDefault();
             }
 
-            queueConfig.RoutingKeys ??= [];
+            if (queueConfig.RoutingKeys == null)
+                queueConfig.RoutingKeys = Array.Empty<string>();
+
             if (queueConfig.RoutingKeys.Contains(queueConfig.RoutingKey))
             {
                 var routingKeys = queueConfig.RoutingKeys.ToList();
                 routingKeys.Remove(queueConfig.RoutingKey);
 
-                queueConfig.RoutingKeys = [.. routingKeys];
+                queueConfig.RoutingKeys = routingKeys.ToArray();
             }
 
             return queueConfig;

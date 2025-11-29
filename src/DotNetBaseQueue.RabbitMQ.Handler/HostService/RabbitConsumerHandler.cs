@@ -131,6 +131,8 @@ namespace DotNetBaseQueue.QueueMQ.HostService
                 await channel.BasicAckAsync(deliveryTag: basicGetResult.DeliveryTag, multiple: false);
 
                 loggerScope.LogInformation("Message processed successfully.");
+                telemetry.Telemetry.Success = true;
+                telemetry.Telemetry.ResponseCode = "200";
             }
             catch (Exception ex)
             {
@@ -160,6 +162,9 @@ namespace DotNetBaseQueue.QueueMQ.HostService
                 newProperties.Headers.Add(RETRY_QUEUE_HEADER, retry);
 
                 loggerScope.LogError(ex, "Retry message error");
+                telemetry.Telemetry.Success = false;
+                telemetry.Telemetry.ResponseCode = "500";
+                telemetryClient.TrackException(ex);
 
                 await channel.BasicPublishAsync<BasicProperties>(exchange: _queueConfiguration.ExchangeName,
                                     routingKey: $"{_queueConfiguration.QueueName}{QueueConstraints.PATH_RETRY}",

@@ -3,9 +3,9 @@
     <PackageTags>queue dotnet rabbit rabbitMQ</PackageTags>
     <Description>This library aims to facilitate the use of asynchronous processes in .NET projects,
       with an initial focus entirely on RabbitMQ.</Description>
-    <Version>9.2.0</Version>
-    <AssemblyVersion>9.2.0</AssemblyVersion>
-    <FileVersion>9.2.0</FileVersion>
+    <Version>9.2.1</Version>
+    <AssemblyVersion>9.2.1</AssemblyVersion>
+    <FileVersion>9.2.1</FileVersion>
     <Company>WallaceValadao</Company>
     <Authors>WallaceValadao</Authors>
     <PackageProjectUrl>https://github.com/WallaceValadao/DotNetBaseQueue</PackageProjectUrl>

@@ -9,7 +9,7 @@ namespace DotNetBaseQueue.RabbitMQ.Core.Logs
 
         public CorrelationIdService()
         {
-            correlationId = Guid.NewGuid().ToString().Replace("-", string.Empty);
+            correlationId = Guid.NewGuid().ToString("N");
         }
 
         public string Get()
@@ -19,7 +19,7 @@ namespace DotNetBaseQueue.RabbitMQ.Core.Logs
 
         public void Set(string correlationId)
         {
-            this.correlationId = correlationId.Replace("-", string.Empty);;
+            this.correlationId = correlationId.Replace("-", string.Empty);
         }
     }
 }

@@ -10,7 +10,7 @@ namespace DotNetBaseQueue.RabbitMQ.Core
     {
         public static T GetMessage<T>(this ReadOnlyMemory<byte> readOnlyMemory)
         {
-            var body = Encoding.UTF8.GetString(readOnlyMemory.ToArray());
+            var body = Encoding.UTF8.GetString(readOnlyMemory.Span);
 
             var entidade = JsonSerializer.Deserialize<T>(body);
 

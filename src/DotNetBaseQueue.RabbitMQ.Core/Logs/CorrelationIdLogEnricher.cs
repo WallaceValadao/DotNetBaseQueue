@@ -30,7 +30,7 @@ namespace DotNetBaseQueue.RabbitMQ.Core.Logs
                 return;
             }
 
-            _logger.Log(logLevel, exception, formatter(state, exception));
+            _logger.Log(logLevel, eventId, state, exception, formatter);
         }
     }
 }

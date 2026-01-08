@@ -65,12 +65,14 @@ namespace DotNetBaseQueue.QueueMQ.HostService
 
         private async Task QueueConsumerAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation($"Opening channel and connection with {_queueConfiguration.HostName}.");
+            _logger.LogInformation("Opening channel and connection to {HostName}:{Port}",
+                _queueConfiguration.HostName,
+                _queueConfiguration.Port);
             var channel = await ConnectionHandler.CreateConnectionAsync(_queueConfiguration, _logger);
             await channel.BasicQosAsync(prefetchSize: 0, prefetchCount: _queueConfiguration.PrefetchCount, global: false);
-            _logger.LogInformation("Connection started successfully.");
+            _logger.LogInformation("Connection started successfully");
 
-            _logger.LogInformation("Starting reading messages.");
+            _logger.LogInformation("Starting reading messages");
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -78,7 +80,7 @@ namespace DotNetBaseQueue.QueueMQ.HostService
 
                 consumer.ReceivedAsync += (ch, ea) => ProcessMessageAsync(channel, ea);
 
-                _logger.LogInformation("Starting consumer.");
+                _logger.LogInformation("Starting consumer for queue {QueueName}", _queueConfiguration.QueueName);
                 var tagConsummer = await channel.BasicConsumeAsync(_queueConfiguration.QueueName, false, $"{Environment.MachineName}-{Guid.NewGuid()}", consumer: consumer);
 
                 do
@@ -95,7 +97,6 @@ namespace DotNetBaseQueue.QueueMQ.HostService
 
         private async Task ProcessMessageAsync(IChannel channel, BasicDeliverEventArgs basicGetResult)
         {
-            _logger.LogInformation("Message received! starting processing.");
             var headerMessage = GetValidHeader(basicGetResult);
 
             using var scope = _serviceProvider.CreateScope();
@@ -113,12 +114,19 @@ namespace DotNetBaseQueue.QueueMQ.HostService
             }
             catch (Exception ex)
             {
-                loggerScope.LogError(ex, "Error get correlation id header message.");
+                loggerScope.LogError(ex, "Error extracting correlation id from message header");
             }
-            using var dLog = loggerScope.BeginScope(correlationIdService.Get());
+
+            using var dLog = loggerScope.BeginScope(new Dictionary<string, object>
+            {
+                ["CorrelationId"] = correlationIdService.Get(),
+                ["QueueName"] = _queueConfiguration.QueueName,
+                ["MachineName"] = Environment.MachineName
+            });
 
             using var telemetry = telemetryClient.StartOperation<RequestTelemetry>(_queueConfiguration.QueueName);
-            loggerScope.LogInformation("Starting processing message.");
+
+            loggerScope.LogInformation("Message received, starting processing");
 
             var commandHandler = scope.ServiceProvider.GetService<IEvent>();
 
@@ -130,7 +138,7 @@ namespace DotNetBaseQueue.QueueMQ.HostService
 
                 await channel.BasicAckAsync(deliveryTag: basicGetResult.DeliveryTag, multiple: false);
 
-                loggerScope.LogInformation("Message processed successfully.");
+                loggerScope.LogInformation("Message processed successfully");
                 telemetry.Telemetry.Success = true;
                 telemetry.Telemetry.ResponseCode = "200";
             }
@@ -139,7 +147,7 @@ namespace DotNetBaseQueue.QueueMQ.HostService
                 var retry = 0;
                 if (!_queueConfiguration.CreateRetryQueue)
                 {
-                    loggerScope.LogError(ex, "Error message");
+                    loggerScope.LogError(ex, "Error processing message, retry queue is disabled");
                     await channel.BasicNackAsync(basicGetResult.DeliveryTag, false, false);
                     return;
                 }
@@ -152,7 +160,7 @@ namespace DotNetBaseQueue.QueueMQ.HostService
 
                 if (retry >= _queueConfiguration.NumberTryRetry)
                 {
-                    loggerScope.LogError(ex, "Error: num max retry.");
+                    loggerScope.LogError(ex, "Message reached maximum retry attempts {MaxRetries}", _queueConfiguration.NumberTryRetry);
                     await channel.BasicNackAsync(basicGetResult.DeliveryTag, false, false);
                     return;
                 }
@@ -161,7 +169,7 @@ namespace DotNetBaseQueue.QueueMQ.HostService
                 var newProperties = MessageHelper.GetHabbitMqProperties(correlationIdService.Get(), true);
                 newProperties.Headers.Add(RETRY_QUEUE_HEADER, retry);
 
-                loggerScope.LogError(ex, "Retry message error");
+                loggerScope.LogError(ex, "Message processing failed, retrying {RetryCount}/{MaxRetries}", retry, _queueConfiguration.NumberTryRetry);
                 telemetry.Telemetry.Success = false;
                 telemetry.Telemetry.ResponseCode = "500";
                 telemetryClient.TrackException(ex);

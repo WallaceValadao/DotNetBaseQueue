@@ -31,7 +31,7 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Consumir
 
                 channel.ChannelShutdownAsync += (sender, ea) =>
                 {
-                    logger.LogError("Channel error: {ea}", ea);
+                    logger.LogError("Channel shutdown: {@ShutdownEventArgs}", ea);
                     return Task.CompletedTask;
                 };
 
@@ -112,7 +112,7 @@ namespace DotNetBaseQueue.RabbitMQ.Handler.Consumir
             connection = await factory.CreateConnectionAsync();
             connection.ConnectionShutdownAsync += (sender, ea) =>
             {
-                logger.LogError($"Connection error: {ea}");
+                logger.LogError("Connection shutdown: {@ShutdownEventArgs}", ea);
 
                 return Task.CompletedTask;
             };

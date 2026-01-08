@@ -36,13 +36,17 @@ namespace DotNetBaseQueue.RabbitMQ.Handler
             app.Services.AddSingleton(typeof(ILogger<>), typeof(CorrelationIdLogger<>));
             app.Services.AddScoped<ICorrelationIdService, CorrelationIdService>();
 
-            app.Services.AddApplicationInsightsTelemetryWorkerService();
-            app.Logging.AddApplicationInsights();
-
-            app.Services.ConfigureTelemetryModule<DependencyTrackingTelemetryModule>((module, o) =>
+            var appInsightsConnectionString = app.Configuration.GetValue<string>("ApplicationInsights:ConnectionString");
+            if (!string.IsNullOrEmpty(appInsightsConnectionString))
             {
-                module.EnableSqlCommandTextInstrumentation = true;
-            });
+                app.Services.AddApplicationInsightsTelemetryWorkerService();
+                app.Logging.AddApplicationInsights();
+
+                app.Services.ConfigureTelemetryModule<DependencyTrackingTelemetryModule>((module, o) =>
+                {
+                    module.EnableSqlCommandTextInstrumentation = true;
+                });
+            }
         }
 
         public static RabbitConsumerBuilder AddHandler<IEvent, IEntity>(

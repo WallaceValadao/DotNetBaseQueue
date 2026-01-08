@@ -49,11 +49,15 @@ namespace DotNetBaseQueue.RabbitMQ.Publicar.Implementation
             {
                 connection = new ConnectionPublish(queueHostConfiguration);
                 connections.TryAdd(name, connection);
-                _logger.LogInformation($"Created a new connection: {name}");
+                _logger.LogInformation("Created a new connection to {HostName}:{Port}",
+                    queueHostConfiguration.HostName,
+                    queueHostConfiguration.Port);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error opening connection with rabbit");
+                _logger.LogError(ex, "Error opening connection to RabbitMQ {HostName}:{Port}",
+                    queueHostConfiguration.HostName,
+                    queueHostConfiguration.Port);
 
                 throw;
             }

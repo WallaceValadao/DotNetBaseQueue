@@ -2,7 +2,6 @@ using DotNetBaseQueue.Api.Sample;
 using DotNetBaseQueue.Interfaces;
 using DotNetBaseQueue.Interfaces.Configs;
 using DotNetBaseQueue.RabbitMQ.Publish;
-using DotNetBaseQueue.RabbitMQ.Handler;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using System.Text.Json;
@@ -15,12 +14,12 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddQueuePublishSingleton(builder.Configuration);
 
 var queueConfig = builder.Configuration.GetSection("ExampleQueueConfiguration").Get<QueueConfiguration>();
-if (queueConfig != null)
-{
-    builder.Services.AddHealthChecks()
-        .AddRabbitMQHealthChecks(queueConfig, name: "rabbitmq-connection")
-        .AddQueueDepthHealthCheck(queueConfig, warningThreshold: 1000, errorThreshold: 5000);
-}
+// if (queueConfig != null)
+// {
+//     builder.Services.AddHealthChecks()
+//         .AddRabbitMQHealthChecks(queueConfig, name: "rabbitmq-connection")
+//         .AddQueueDepthHealthCheck(queueConfig, warningThreshold: 1000, errorThreshold: 5000);
+// }
 
 var app = builder.Build();
 

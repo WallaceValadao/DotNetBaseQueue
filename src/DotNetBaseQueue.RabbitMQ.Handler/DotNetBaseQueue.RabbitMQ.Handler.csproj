@@ -3,9 +3,9 @@
     <PackageTags>queue dotnet rabbit rabbitMQ</PackageTags>
     <Description>This library aims to facilitate the use of asynchronous processes in .NET projects,
       with an initial focus entirely on RabbitMQ.</Description>
-    <Version>9.2.1</Version>
-    <AssemblyVersion>9.2.1</AssemblyVersion>
-    <FileVersion>9.2.1</FileVersion>
+    <Version>10.0.0</Version>
+    <AssemblyVersion>10.0.0</AssemblyVersion>
+    <FileVersion>10.0.0</FileVersion>
     <Company>WallaceValadao</Company>
     <Authors>WallaceValadao</Authors>
     <PackageProjectUrl>https://github.com/WallaceValadao/DotNetBaseQueue</PackageProjectUrl>
@@ -25,12 +25,12 @@
     <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="[9.0.11,)" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="[9.0.11,)" />
-    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="[9.0.11,)" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="[10.0.2,)" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="[10.0.2,)" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="[10.0.2,)" />
     <PackageReference Include="Microsoft.Extensions.Logging.ApplicationInsights" Version="[2.23,)" />
     <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="[2.23,)" />
-    <PackageReference Include="DotNetBaseQueue.RabbitMQ.Core" Version="[9.2.0,)" />
+    <PackageReference Include="DotNetBaseQueue.RabbitMQ.Core" Version="[10.0.0,)" />
   </ItemGroup>
   <!-- <ItemGroup>
     <ProjectReference Include="..\DotNetBaseQueue.RabbitMQ.Core\DotNetBaseQueue.RabbitMQ.Core.csproj" />

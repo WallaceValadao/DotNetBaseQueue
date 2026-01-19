@@ -40,17 +40,17 @@ public class TestController : BaseController
     }
 
     [HttpPost]
-    public IActionResult PostEntity(object obj)
+    public async Task<IActionResult> PostEntity(object obj)
     {
-        _queuePublish.Publish(obj, CONFIG_PublishSectionQueue);
+        await _queuePublish.PublishAsync(obj, CONFIG_PublishSectionQueue);
 
         return Ok();
     }
 
     [HttpPost]
-    public IActionResult PostEntities(List<object> objects)
+    public async Task<IActionResult> PostEntities(List<object> objects)
     {
-        _queuePublish.PublishList(objects, CONFIG_PublishSectionQueue);
+        await _queuePublish.PublishList(objects, CONFIG_PublishSectionQueue);
 
         return Ok();
     }

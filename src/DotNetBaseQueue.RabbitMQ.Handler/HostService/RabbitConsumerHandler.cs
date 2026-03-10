@@ -112,6 +112,9 @@ namespace DotNetBaseQueue.QueueMQ.HostService
             activity?.SetTag("messaging.destination", _queueConfiguration.QueueName);
             activity?.SetTag("messaging.destination_kind", "queue");
             activity?.SetTag("messaging.operation", "process");
+            activity?.SetTag("server.address", _queueConfiguration.HostName);
+            activity?.SetTag("server.port", _queueConfiguration.Port);
+            activity?.SetTag("messaging.rabbitmq.routing_key", _queueConfiguration.RoutingKey);
 
             using var scope = _serviceProvider.CreateScope();
 
@@ -130,11 +133,17 @@ namespace DotNetBaseQueue.QueueMQ.HostService
                 loggerScope.LogError(ex, "Error extracting correlation id from message header");
             }
 
+            var correlationId = correlationIdService.Get();
+
+            activity?.SetTag("messaging.message_id", correlationId);
+
             using var dLog = loggerScope.BeginScope(new Dictionary<string, object>
             {
-                ["CorrelationId"] = correlationIdService.Get(),
+                ["CorrelationId"] = correlationId,
                 ["QueueName"] = _queueConfiguration.QueueName,
-                ["MachineName"] = Environment.MachineName
+                ["MachineName"] = Environment.MachineName,
+                ["TraceId"] = activity?.TraceId.ToString() ?? string.Empty,
+                ["SpanId"] = activity?.SpanId.ToString() ?? string.Empty
             });
 
             loggerScope.LogInformation("Message received, starting processing");
@@ -158,7 +167,7 @@ namespace DotNetBaseQueue.QueueMQ.HostService
                 if (!_queueConfiguration.CreateRetryQueue)
                 {
                     loggerScope.LogError(ex, "Error processing message, retry queue is disabled");
-                    activity?.RecordException(ex);
+                    activity?.AddException(ex);
                     activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                     await channel.BasicNackAsync(basicGetResult.DeliveryTag, false, false);
                     return;
@@ -173,7 +182,7 @@ namespace DotNetBaseQueue.QueueMQ.HostService
                 if (retry >= _queueConfiguration.NumberTryRetry)
                 {
                     loggerScope.LogError(ex, "Message reached maximum retry attempts {MaxRetries}", _queueConfiguration.NumberTryRetry);
-                    activity?.RecordException(ex);
+                    activity?.AddException(ex);
                     activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                     await channel.BasicNackAsync(basicGetResult.DeliveryTag, false, false);
                     return;
@@ -183,8 +192,15 @@ namespace DotNetBaseQueue.QueueMQ.HostService
                 var newProperties = MessageHelper.GetHabbitMqProperties(correlationIdService.Get(), true);
                 newProperties.Headers.Add(RETRY_QUEUE_HEADER, retry);
 
+                using var retryScope = loggerScope.BeginScope(new Dictionary<string, object>
+                {
+                    ["RetryCount"] = retry,
+                    ["MaxRetries"] = _queueConfiguration.NumberTryRetry
+                });
+
                 loggerScope.LogError(ex, "Message processing failed, retrying {RetryCount}/{MaxRetries}", retry, _queueConfiguration.NumberTryRetry);
-                activity?.RecordException(ex);
+                activity?.SetTag("messaging.rabbitmq.retry_count", retry);
+                activity?.AddException(ex);
                 activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
 
                 await channel.BasicPublishAsync<BasicProperties>(exchange: _queueConfiguration.ExchangeName,

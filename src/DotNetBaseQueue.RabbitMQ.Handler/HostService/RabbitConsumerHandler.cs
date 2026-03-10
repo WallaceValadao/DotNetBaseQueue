@@ -2,7 +2,10 @@
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using OpenTelemetry.Trace;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using DotNetBaseQueue.Interfaces.Configs;
@@ -13,9 +16,8 @@ using DotNetBaseQueue.RabbitMQ.HostService;
 using RabbitMQ.Client.Events;
 using RabbitMQ.Client;
 using DotNetBaseQueue.RabbitMQ.Core;
-using Microsoft.ApplicationInsights;
-using Microsoft.ApplicationInsights.DataContracts;
 using DotNetBaseQueue.Interfaces.Logs;
+using DotNetBaseQueue.RabbitMQ.Handler.Telemetry;
 
 namespace DotNetBaseQueue.QueueMQ.HostService
 {
@@ -99,17 +101,28 @@ namespace DotNetBaseQueue.QueueMQ.HostService
         {
             var headerMessage = GetValidHeader(basicGetResult);
 
+            var parentContext = ExtractParentContext(headerMessage);
+
+            using var activity = RabbitMqActivitySource.Source.StartActivity(
+                $"process {_queueConfiguration.QueueName}",
+                ActivityKind.Consumer,
+                parentContext);
+
+            activity?.SetTag("messaging.system", "rabbitmq");
+            activity?.SetTag("messaging.destination", _queueConfiguration.QueueName);
+            activity?.SetTag("messaging.destination_kind", "queue");
+            activity?.SetTag("messaging.operation", "process");
+
             using var scope = _serviceProvider.CreateScope();
 
             var loggerScope = scope.ServiceProvider.GetService<ILogger<IEvent>>();
             var correlationIdService = scope.ServiceProvider.GetService<ICorrelationIdService>();
-            var telemetryClient = scope.ServiceProvider.GetService<TelemetryClient>();
 
             try
             {
                 if (headerMessage.TryGetValue(QueueConstraints.CORRELATION_ID_HEADER, out var correlationIdHeader))
                 {
-                    correlationIdService.Set(System.Text.Encoding.Default.GetString((byte[])correlationIdHeader));
+                    correlationIdService.Set(Encoding.Default.GetString((byte[])correlationIdHeader));
                 }
             }
             catch (Exception ex)
@@ -124,8 +137,6 @@ namespace DotNetBaseQueue.QueueMQ.HostService
                 ["MachineName"] = Environment.MachineName
             });
 
-            using var telemetry = telemetryClient.StartOperation<RequestTelemetry>(_queueConfiguration.QueueName);
-
             loggerScope.LogInformation("Message received, starting processing");
 
             var commandHandler = scope.ServiceProvider.GetService<IEvent>();
@@ -139,8 +150,7 @@ namespace DotNetBaseQueue.QueueMQ.HostService
                 await channel.BasicAckAsync(deliveryTag: basicGetResult.DeliveryTag, multiple: false);
 
                 loggerScope.LogInformation("Message processed successfully");
-                telemetry.Telemetry.Success = true;
-                telemetry.Telemetry.ResponseCode = "200";
+                activity?.SetStatus(ActivityStatusCode.Ok);
             }
             catch (Exception ex)
             {
@@ -148,6 +158,8 @@ namespace DotNetBaseQueue.QueueMQ.HostService
                 if (!_queueConfiguration.CreateRetryQueue)
                 {
                     loggerScope.LogError(ex, "Error processing message, retry queue is disabled");
+                    activity?.RecordException(ex);
+                    activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                     await channel.BasicNackAsync(basicGetResult.DeliveryTag, false, false);
                     return;
                 }
@@ -161,6 +173,8 @@ namespace DotNetBaseQueue.QueueMQ.HostService
                 if (retry >= _queueConfiguration.NumberTryRetry)
                 {
                     loggerScope.LogError(ex, "Message reached maximum retry attempts {MaxRetries}", _queueConfiguration.NumberTryRetry);
+                    activity?.RecordException(ex);
+                    activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                     await channel.BasicNackAsync(basicGetResult.DeliveryTag, false, false);
                     return;
                 }
@@ -170,9 +184,8 @@ namespace DotNetBaseQueue.QueueMQ.HostService
                 newProperties.Headers.Add(RETRY_QUEUE_HEADER, retry);
 
                 loggerScope.LogError(ex, "Message processing failed, retrying {RetryCount}/{MaxRetries}", retry, _queueConfiguration.NumberTryRetry);
-                telemetry.Telemetry.Success = false;
-                telemetry.Telemetry.ResponseCode = "500";
-                telemetryClient.TrackException(ex);
+                activity?.RecordException(ex);
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
 
                 await channel.BasicPublishAsync<BasicProperties>(exchange: _queueConfiguration.ExchangeName,
                                     routingKey: $"{_queueConfiguration.QueueName}{QueueConstraints.PATH_RETRY}",
@@ -182,13 +195,33 @@ namespace DotNetBaseQueue.QueueMQ.HostService
 
                 await channel.BasicAckAsync(basicGetResult.DeliveryTag, false);
             }
-            finally
-            {
-                telemetryClient.StopOperation(telemetry);
-            }
         }
 
-        private static new IDictionary<string, object> GetValidHeader(BasicDeliverEventArgs basicGetResult)
+        private ActivityContext ExtractParentContext(IDictionary<string, object> headers)
+        {
+            try
+            {
+                if (headers.TryGetValue("traceparent", out var traceparentRaw))
+                {
+                    var traceparent = Encoding.UTF8.GetString((byte[])traceparentRaw);
+                    headers.TryGetValue("tracestate", out var tracestateRaw);
+                    var tracestate = tracestateRaw != null
+                        ? Encoding.UTF8.GetString((byte[])tracestateRaw)
+                        : null;
+
+                    if (ActivityContext.TryParse(traceparent, tracestate, out var ctx))
+                        return ctx;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error extracting parent context from message header");
+            }
+
+            return default;
+        }
+
+        private static IDictionary<string, object> GetValidHeader(BasicDeliverEventArgs basicGetResult)
         {
             return basicGetResult.BasicProperties.Headers ?? new Dictionary<string, object>();
         }

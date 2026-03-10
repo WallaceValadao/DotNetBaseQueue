@@ -11,7 +11,11 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using DotNetBaseQueue.RabbitMQ.Core.Logs;
 using DotNetBaseQueue.Interfaces.Logs;
-using Microsoft.ApplicationInsights.DependencyCollector;
+using DotNetBaseQueue.RabbitMQ.Handler.Telemetry;
+using OpenTelemetry;
+using OpenTelemetry.Trace;
+using OpenTelemetry.Logs;
+using Azure.Monitor.OpenTelemetry.Exporter;
 
 namespace DotNetBaseQueue.RabbitMQ.Handler
 {
@@ -33,20 +37,26 @@ namespace DotNetBaseQueue.RabbitMQ.Handler
         {
             if (!useLogger)
                 return;
+
             app.Services.AddSingleton(typeof(ILogger<>), typeof(CorrelationIdLogger<>));
             app.Services.AddScoped<ICorrelationIdService, CorrelationIdService>();
 
-            var appInsightsConnectionString = app.Configuration.GetValue<string>("ApplicationInsights:ConnectionString");
-            if (!string.IsNullOrEmpty(appInsightsConnectionString))
-            {
-                app.Services.AddApplicationInsightsTelemetryWorkerService();
-                app.Logging.AddApplicationInsights();
+            var connectionString = app.Configuration.GetValue<string>("ApplicationInsights:ConnectionString");
+            if (string.IsNullOrEmpty(connectionString))
+                return;
 
-                app.Services.ConfigureTelemetryModule<DependencyTrackingTelemetryModule>((module, o) =>
-                {
-                    module.EnableSqlCommandTextInstrumentation = true;
-                });
-            }
+            app.Services.AddOpenTelemetry()
+                .WithTracing(tracing => tracing
+                    .AddSource(RabbitMqActivitySource.SourceName)
+                    .AddHttpClientInstrumentation()
+                    .AddAzureMonitorTraceExporter(o => o.ConnectionString = connectionString));
+
+            app.Logging.AddOpenTelemetry(logging =>
+            {
+                logging.IncludeFormattedMessage = true;
+                logging.IncludeScopes = true;
+                logging.AddAzureMonitorLogExporter(o => o.ConnectionString = connectionString);
+            });
         }
 
         public static RabbitConsumerBuilder AddHandler<IEvent, IEntity>(
